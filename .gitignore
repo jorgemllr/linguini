@@ -1,0 +1,11 @@
+# Dependencias gigantes (se instalan solas en Vercel)
+node_modules/
+__pycache__/
+venv/
+.env
+
+# Archivos de sistema Mac
+.DS_Store
+
+# Carpetas de construcción
+dist/

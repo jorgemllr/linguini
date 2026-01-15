@@ -1,0 +1,97 @@
+{
+    "language": "de",
+    "analysis": {
+        "vocabulary": [
+            {
+                "word": "Feedback",
+                "es": "retroalimentación",
+                "en": "feedback",
+                "examples": [
+                    {
+                        "original": "Hatte es Feedback.",
+                        "es_translation": "Tuvo una retroalimentación."
+                    },
+                    {
+                        "original": "Kann man die einzelnen Episoden bewerten?",
+                        "es_translation": "¿Se puede calificar los episodios individuales?"
+                    }
+                ]
+            },
+            {
+                "word": "bewerten",
+                "es": "evaluar/calificar",
+                "en": "to evaluate/to rate",
+                "examples": [
+                    {
+                        "original": "Habt direkt fünf Sterne gegeben in allen Podcast-Apps.",
+                        "es_translation": "Le diste directamente cinco estrellas en todas las aplicaciones de podcasts."
+                    },
+                    {
+                        "original": "Könnt ihr mal machen und bewerten.",
+                        "es_translation": "Podéis hacerlo y calificar."
+                    }
+                ]
+            },
+            {
+                "word": "lustig",
+                "es": "divertido",
+                "en": "funny",
+                "examples": [
+                    {
+                        "original": "Es war sehr lustig.",
+                        "es_translation": "Fue muy divertido."
+                    },
+                    {
+                        "original": "Das ist ja gerade, also ich muss sagen, Janusz Unperfektheit ist wirklich für mich jeden Tag ein Grund zur Freude.",
+                        "es_translation": "Eso es justo, así que tengo que decir que la imperfección de Janusz es realmente para mí un motivo de alegría todos los días."
+                    }
+                ]
+            },
+            {
+                "word": "Kentnis",
+                "es": "conocimiento/habilidad",
+                "en": "knowledge/skill",
+                "examples": [
+                    {
+                        "original": "Und wo ist dein Französisch-Kentnis?",
+                        "es_translation": "¿Y dónde está tu conocimiento de francés?"
+                    },
+                    {
+                        "original": "Mit meinem Französisch bin ich auch am Ende.",
+                        "es_translation": "También estoy al final con mi francés."
+                    }
+                ]
+            },
+            {
+                "word": "kompliziert",
+                "es": "complicado",
+                "en": "complicated",
+                "examples": [
+                    {
+                        "original": "Latein ist eine komplizierte Sprache.",
+                        "es_translation": "El latín es un idioma complicado."
+                    },
+                    {
+                        "original": "Gibt ja andere komplizierte Sprachen.",
+                        "es_translation": "Hay otros idiomas complicados."
+                    }
+                ]
+            },
+            {
+                "word": "Sprichwort",
+                "es": "dicho",
+                "en": "proverb",
+                "examples": [
+                    {
+                        "original": "deshalb benutzt man das als Sprichwort.",
+                        "es_translation": "por eso se usa como un proverbio."
+                    },
+                    {
+                        "original": "Wenn man mit seinem Latein am Ende ist, dann weiß man wirklich nicht mehr weiter.",
+                        "es_translation": "Cuando uno está al final de su latín, realmente no sabe cómo seguir."
+                    }
+                ]
+            }
+        ]
+    }
+}

@@ -9,3 +9,7 @@ venv/
 
 # Carpetas de construcción
 dist/
+
+# Bases de datos locales
+*.db
+api/*.db

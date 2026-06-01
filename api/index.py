@@ -77,10 +77,22 @@ def get_gemini_client():
                 print(f"❌ Error al inicializar cliente de Gemini: {e}")
     return _gemini_client
 
-# Ruta de prueba para ver si el backend vive
+# Ruta de diagnóstico para verificar variables de entorno en Vercel
 @app.route('/api/hello', methods=['GET'])
 def hello():
-    return jsonify({"message": "Hello from Vercel Python!"})
+    supabase_url = os.getenv("VITE_SUPABASE_URL", "")
+    supabase_key = os.getenv("VITE_SUPABASE_ANON_KEY", "")
+    openai_key = os.getenv("OPENAI_API_KEY", "")
+    gemini_key = os.getenv("GEMINI_API_KEY", "")
+    return jsonify({
+        "status": "ok",
+        "is_vercel": IS_VERCEL,
+        "supabase_url_set": bool(supabase_url),
+        "supabase_url_preview": supabase_url[:30] + "..." if supabase_url else "NOT SET",
+        "supabase_key_set": bool(supabase_key),
+        "openai_key_set": bool(openai_key),
+        "gemini_key_set": bool(gemini_key),
+    })
 
 # --- ENDPOINTS BASE DE DATOS LOCAL (REPLAZA SUPABASE) ---
 

@@ -1848,7 +1848,7 @@ function App() {
          <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
              <button onClick={() => setSidebarOpen(true)} className="icon-btn"><MenuIcon/></button>
              <h1 style={{ fontSize: '0.9rem', margin: 0, fontWeight: '600', textTransform: 'uppercase', letterSpacing: '0.5px', color: theme.textSecondary }}>
-               {currentDoc ? (currentDoc.title.length > 25 ? currentDoc.title.substring(0,25)+'...' : currentDoc.title) : 'LinguaFlow'}
+               {currentDoc ? (currentDoc.title.length > 25 ? currentDoc.title.substring(0,25)+'...' : currentDoc.title) : 'Linguini'}
              </h1>
          </div>
          <button onClick={() => {

@@ -9,9 +9,9 @@ export default defineConfig({
       registerType: 'autoUpdate',
       includeAssets: ['favicon.ico', 'apple-touch-icon.png', 'mask-icon.svg'],
       manifest: {
-        name: 'Polyglot Reader',
-        short_name: 'PolyReader',
-        description: 'Lector inteligente de Aleman',
+        name: 'Linguini',
+        short_name: 'Linguini',
+        description: 'Lector inteligente de idiomas',
         theme_color: '#ffffff',
         background_color: '#ffffff',
         display: 'standalone',

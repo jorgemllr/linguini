@@ -2,7 +2,13 @@ import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react'
 import dataLocal from './data.json';
 import rawTranscript from './transcript.txt?raw';
 
-const getApiUrl = (path) => import.meta.env.DEV ? `http://localhost:5000${path}` : path;
+const getApiUrl = (path) => {
+  if (import.meta.env.DEV) {
+    // Use the same host that served the page — works for localhost AND LAN IP (e.g. 192.168.x.x)
+    return `http://${window.location.hostname}:5000${path}`;
+  }
+  return path;
+};
 
 // Supabase Storage: direct browser upload (bypasses Vercel 4.5MB limit)
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || '';
@@ -202,12 +208,14 @@ function App() {
   const activeSingleWord = useRef(null);
   const lastProcessedIdx = useRef(null);
   const isPopupClosedByUser = useRef(false);
+  const modalOpenedTime = useRef(0);
 
   // --- CLOUD UPLOAD STATE ---
-  const [audioFile, setAudioFile] = useState(null);
+  const [audioFiles, setAudioFiles] = useState([]);
   const [audioTitle, setAudioTitle] = useState('');
   const [uploadingAudio, setUploadingAudio] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
+  const [uploadStatusMsg, setUploadStatusMsg] = useState('');
   const [importingPdfCloud, setImportingPdfCloud] = useState(false);
   const [pdfUploadProgress, setPdfUploadProgress] = useState(0);
 
@@ -349,8 +357,13 @@ function App() {
     };
   }, [currentDoc?.id]);
 
-  // Audiobooks derivados de documentos con language='audio'
-  const cloudAudiobooks = useMemo(() => documents.filter(d => d.language === 'audio'), [documents]);
+  // Audiobooks derivados de documentos con language='audio', ordenados de forma ascendente por título
+  const cloudAudiobooks = useMemo(() => {
+    return documents
+      .filter(d => d.language === 'audio')
+      .sort((a, b) => a.title.localeCompare(b.title, undefined, { numeric: true, sensitivity: 'base' }));
+  }, [documents]);
+  const cloudBooks = useMemo(() => documents.filter(d => d.language !== 'audio'), [documents]);
 
   const [sidebarSections, setSidebarSections] = useState({ books: true, audios: true });
 
@@ -360,36 +373,37 @@ function App() {
         try {
             const res = await fetch(getApiUrl('/api/documents'));
             const data = await res.json();
-            if (data && data.length > 0) {
-                setDocuments(prev => {
-                    const demoDoc = prev.find(d => d.id === 'demo') || {
-                      id: 'demo',
-                      title: 'Demo: Podcast Alemán',
-                      content: rawTranscript,
-                      audio_url: '/podcast.mp3',
-                      language: 'de',
-                      created_at: new Date().toISOString()
-                    };
-                    const merged = [...data, demoDoc];
-                    
-                    // Restaurar el último documento abierto
-                    const lastDocId = localStorage.getItem('last-opened-doc-id');
-                    if (lastDocId) {
-                        const savedDoc = merged.find(d => d.id === lastDocId);
-                        if (savedDoc) {
-                            setCurrentDoc(prev => (prev && prev.id === savedDoc.id) ? prev : savedDoc);
-                            localStorage.setItem('last-opened-doc', JSON.stringify(savedDoc));
-                        } else {
-                            setCurrentDoc(prev => (prev && prev.id === merged[0].id) ? prev : merged[0]);
-                            localStorage.setItem('last-opened-doc', JSON.stringify(merged[0]));
-                        }
+            const cloudDocs = Array.isArray(data) ? data : [];
+            setDocuments(prev => {
+                const demoDoc = prev.find(d => d.id === 'demo') || {
+                  id: 'demo',
+                  title: 'Demo: Podcast Alemán',
+                  content: rawTranscript,
+                  audio_url: '/podcast.mp3',
+                  language: 'de',
+                  created_at: new Date().toISOString()
+                };
+                const merged = [...cloudDocs, demoDoc];
+                
+                // Restaurar el último documento abierto
+                const lastDocId = localStorage.getItem('last-opened-doc-id');
+                if (lastDocId) {
+                    const savedDoc = merged.find(d => d.id === lastDocId);
+                    if (savedDoc) {
+                        setCurrentDoc(prev => (prev && prev.id === savedDoc.id) ? prev : savedDoc);
+                        localStorage.setItem('last-opened-doc', JSON.stringify(savedDoc));
                     } else {
                         setCurrentDoc(prev => (prev && prev.id === merged[0].id) ? prev : merged[0]);
                         localStorage.setItem('last-opened-doc', JSON.stringify(merged[0]));
+                        localStorage.setItem('last-opened-doc-id', merged[0].id);
                     }
-                    return merged;
-                });
-            }
+                } else {
+                    setCurrentDoc(prev => (prev && prev.id === merged[0].id) ? prev : merged[0]);
+                    localStorage.setItem('last-opened-doc', JSON.stringify(merged[0]));
+                    localStorage.setItem('last-opened-doc-id', merged[0].id);
+                }
+                return merged;
+            });
         } catch (err) {
             console.warn("⚠️ No se pudieron cargar los documentos locales:", err);
         }
@@ -468,43 +482,67 @@ function App() {
     }
   };
 
-  // 2c. Subir audio a Supabase Storage y registrar en la base de datos
+  // 2c. Subir audio a Supabase Storage y registrar en la base de datos (Soporta múltiples archivos)
   const handleUploadAudio = async () => {
-    if (!audioFile) return alert("Por favor selecciona un archivo de audio.");
+    if (audioFiles.length === 0) return alert("Por favor selecciona al menos un archivo de audio.");
     if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
       return alert("Supabase no está configurado. Verifica las variables de entorno.");
     }
     setUploadingAudio(true);
     setUploadProgress(0);
 
+    let firstUploadedDoc = null;
+
     try {
-      // 1. Subir MP3 directamente a Supabase Storage desde el browser
-      const storagePath = `audios/${Date.now()}_${audioFile.name.replace(/\s+/g, '_')}`;
-      await uploadToSupabaseStorage(audioFile, storagePath, (pct) => setUploadProgress(pct));
+      for (let i = 0; i < audioFiles.length; i++) {
+        const file = audioFiles[i];
+        setUploadStatusMsg(`Subiendo archivo ${i + 1} de ${audioFiles.length} (${file.name}): 0%`);
+        setUploadProgress(0);
 
-      // 2. Registrar metadata en Supabase via backend
-      const title = audioTitle.trim() || audioFile.name.replace(/\.[^.]+$/, '');
-      const res = await fetch(getApiUrl('/api/register-audio'), {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ filename: audioFile.name, title, storage_path: storagePath })
-      });
-      const newDoc = await res.json();
-      if (newDoc.error) throw new Error(newDoc.error);
+        // 1. Subir MP3 directamente a Supabase Storage desde el browser
+        const storagePath = `audios/${Date.now()}_${i}_${file.name.replace(/\s+/g, '_')}`;
+        await uploadToSupabaseStorage(file, storagePath, (pct) => {
+          setUploadProgress(pct);
+          setUploadStatusMsg(`Subiendo archivo ${i + 1} de ${audioFiles.length} (${file.name}): ${pct}%`);
+        });
 
-      setDocuments(prev => [newDoc, ...prev]);
+        setUploadStatusMsg(`Registrando archivo ${i + 1} de ${audioFiles.length}...`);
+
+        // 2. Registrar metadata en Supabase via backend
+        const title = (audioFiles.length === 1 && audioTitle.trim()) 
+          ? audioTitle.trim() 
+          : file.name.replace(/\.[^.]+$/, '');
+
+        const res = await fetch(getApiUrl('/api/register-audio'), {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ filename: file.name, title, storage_path: storagePath })
+        });
+        const newDoc = await res.json();
+        if (newDoc.error) throw new Error(newDoc.error);
+
+        setDocuments(prev => [newDoc, ...prev]);
+        if (i === 0) {
+          firstUploadedDoc = newDoc;
+        }
+      }
+
       setShowAddModal(false);
-      setAudioFile(null);
+      setAudioFiles([]);
       setAudioTitle('');
       setUploadProgress(0);
+      setUploadStatusMsg('');
 
-      // Activar el audio recién subido
-      setActiveAudio({ url: newDoc.audio_url, title: newDoc.title });
+      // Activar el primer audio subido de la lista
+      if (firstUploadedDoc) {
+        setActiveAudio({ url: firstUploadedDoc.audio_url, title: firstUploadedDoc.title });
+      }
     } catch (e) {
       alert("Error al subir audio: " + e.message);
     } finally {
       setUploadingAudio(false);
       setUploadProgress(0);
+      setUploadStatusMsg('');
     }
   };
 
@@ -958,6 +996,7 @@ function App() {
     }
 
     setIsLoading(true);
+    modalOpenedTime.current = Date.now();
     setSelectedWord({ word: cleanWord, es: "...", en: "...", examples: [], associatedPhrase });
 
     // CACHÉ
@@ -967,7 +1006,7 @@ function App() {
 
         if (cached) {
             if (isPopupClosedByUser.current) return;
-            setSelectedWord({ word: cleanWord, ...cached.translation_data, associatedPhrase });
+            setSelectedWord({ word: cleanWord, ...cached.translation_data, associatedPhrase, fromCache: true });
             setIsLoading(false);
             return;
         }
@@ -979,13 +1018,17 @@ function App() {
       const res = await fetch(API_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ word: searchWord, context: surroundingSentence })
+        body: JSON.stringify({ 
+          word: searchWord, 
+          context: surroundingSentence,
+          language: currentDoc?.language || 'auto'
+        })
       });
       const apiData = await res.json();
       if (apiData.error) throw new Error(apiData.error);
 
       if (isPopupClosedByUser.current) return;
-      setSelectedWord({ word: cleanWord, ...apiData, associatedPhrase });
+      setSelectedWord({ word: cleanWord, ...apiData, associatedPhrase, fromCache: false });
 
       try {
         await fetch(getApiUrl('/api/word_cache'), {
@@ -1002,13 +1045,75 @@ function App() {
       }
     } catch (e) {
       if (isPopupClosedByUser.current) return;
-      setSelectedWord({ word: cleanWord, es: "Error", en: "Connection Error", grammar: "Revisa tu conexión", examples: [], associatedPhrase });
+      setSelectedWord({ word: cleanWord, es: "Error", en: "Connection Error", grammar: "Revisa tu conexión", examples: [], associatedPhrase, fromCache: false });
     } finally {
       if (!isPopupClosedByUser.current) {
         setIsLoading(false);
       }
     }
   }, [currentDoc]);
+
+  const handleRefreshTranslation = useCallback(async () => {
+    if (!selectedWord) return;
+    setIsLoading(true);
+    isPopupClosedByUser.current = false;
+    
+    const searchWord = selectedWord.word.toLowerCase();
+    const context = dragParagraphText.current || "";
+    
+    const API_URL = getApiUrl('/api/analyze');
+    try {
+      const res = await fetch(API_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          word: searchWord, 
+          context: context,
+          language: currentDoc?.language || 'auto'
+        })
+      });
+      const apiData = await res.json();
+      if (apiData.error) throw new Error(apiData.error);
+
+      if (isPopupClosedByUser.current) return;
+      setSelectedWord({ 
+        word: selectedWord.word, 
+        ...apiData, 
+        associatedPhrase: selectedWord.associatedPhrase, 
+        fromCache: false 
+      });
+
+      // Update cache in database
+      try {
+        await fetch(getApiUrl('/api/word_cache'), {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                word: searchWord,
+                language: currentDoc?.language || 'auto',
+                translation_data: apiData
+            })
+        });
+      } catch (dbErr) {
+        console.warn("⚠️ No se pudo guardar en la caché de la base de datos local:", dbErr);
+      }
+    } catch (e) {
+      if (isPopupClosedByUser.current) return;
+      setSelectedWord({ 
+        word: selectedWord.word, 
+        es: "Error", 
+        en: "Connection Error", 
+        grammar: "Revisa tu conexión", 
+        examples: [], 
+        associatedPhrase: selectedWord.associatedPhrase, 
+        fromCache: false 
+      });
+    } finally {
+      if (!isPopupClosedByUser.current) {
+        setIsLoading(false);
+      }
+    }
+  }, [selectedWord, currentDoc]);
 
   const handleWordLongPress = useCallback(async (clickedWord, surroundingSentence) => {
     const cleanWord = clickedWord
@@ -1906,30 +2011,30 @@ function App() {
                   {sidebarSections.books && (
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', paddingLeft: '4px', marginTop: '2px' }}>
                           {/* 1. Libros Procesados en SQLite */}
-                          {documents.map(doc => (
-                              <div key={doc.id} onClick={() => { setCurrentDoc(doc); setSidebarOpen(false); }} 
-                                   style={{ 
-                                       display: 'flex', alignItems: 'center', gap: '10px',
-                                       padding: '10px 12px', borderRadius: '10px', cursor: 'pointer', 
-                                       background: currentDoc?.id === doc.id ? 'rgba(10, 132, 255, 0.12)' : 'transparent',
-                                       color: currentDoc?.id === doc.id ? '#0A84FF' : theme.text,
-                                       transition: 'all 0.15s', fontSize: '0.9rem', fontWeight: currentDoc?.id === doc.id ? '600' : '400'
-                                   }}
-                                   onMouseOver={(e) => { if(currentDoc?.id !== doc.id) e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.04)'; }}
-                                   onMouseOut={(e) => { if(currentDoc?.id !== doc.id) e.currentTarget.style.backgroundColor = 'transparent'; }}
-                              >
-                                  <BookIcon />
-                                  <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>
-                                      {doc.title.startsWith("Subrayados: ") ? doc.title.replace("Subrayados: ", "") : doc.title}
-                                  </span>
-                              </div>
-                          ))}
-                          
-                          {documents.length === 0 && (
-                              <div style={{ padding: '12px', fontSize: '0.85rem', color: theme.textSecondary, fontStyle: 'italic', textAlign: 'center' }}>
-                                  Importa tu primer PDF con el botón +
-                              </div>
-                          )}
+                          {cloudBooks.map(doc => (
+                               <div key={doc.id} onClick={() => { setCurrentDoc(doc); setSidebarOpen(false); }} 
+                                    style={{ 
+                                        display: 'flex', alignItems: 'center', gap: '10px',
+                                        padding: '10px 12px', borderRadius: '10px', cursor: 'pointer', 
+                                        background: currentDoc?.id === doc.id ? 'rgba(10, 132, 255, 0.12)' : 'transparent',
+                                        color: currentDoc?.id === doc.id ? '#0A84FF' : theme.text,
+                                        transition: 'all 0.15s', fontSize: '0.9rem', fontWeight: currentDoc?.id === doc.id ? '600' : '400'
+                                    }}
+                                    onMouseOver={(e) => { if(currentDoc?.id !== doc.id) e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.04)'; }}
+                                    onMouseOut={(e) => { if(currentDoc?.id !== doc.id) e.currentTarget.style.backgroundColor = 'transparent'; }}
+                               >
+                                   <BookIcon />
+                                   <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>
+                                       {doc.title.startsWith("Subrayados: ") ? doc.title.replace("Subrayados: ", "") : doc.title}
+                                   </span>
+                               </div>
+                           ))}
+                           
+                           {cloudBooks.length === 0 && (
+                               <div style={{ padding: '12px', fontSize: '0.85rem', color: theme.textSecondary, fontStyle: 'italic', textAlign: 'center' }}>
+                                   Importa tu primer PDF con el botón +
+                               </div>
+                           )}
                       </div>
                   )}
               </div>
@@ -2156,7 +2261,7 @@ function App() {
                 ) : importTab === "pdf" ? (
                     <>
                         {/* Upload progress bar */}
-                        {importingPdf && pdfUploadProgress > 0 && pdfUploadProgress < 100 && (
+                        {importingPdf && pdfUploadProgress < 100 && (
                             <div style={{ marginBottom: '16px' }}>
                                 <div style={{ fontSize: '0.8rem', color: theme.textSecondary, marginBottom: '6px' }}>Subiendo PDF... {pdfUploadProgress}%</div>
                                 <div style={{ height: '4px', background: 'rgba(255,255,255,0.1)', borderRadius: '2px' }}>
@@ -2218,10 +2323,10 @@ function App() {
                 ) : (
                     /* TAB AUDIO */
                     <>
-                        {uploadingAudio && uploadProgress > 0 && (
+                        {uploadingAudio && (
                             <div style={{ marginBottom: '16px' }}>
-                                <div style={{ fontSize: '0.8rem', color: theme.textSecondary, marginBottom: '6px' }}>
-                                    {uploadProgress < 100 ? `Subiendo audio... ${uploadProgress}%` : '✅ Subido. Registrando...'}
+                                <div style={{ fontSize: '0.85rem', color: theme.textSecondary, marginBottom: '6px', fontWeight: '500' }}>
+                                    {uploadStatusMsg || `Subiendo audio... ${uploadProgress}%`}
                                 </div>
                                 <div style={{ height: '4px', background: 'rgba(255,255,255,0.1)', borderRadius: '2px' }}>
                                     <div style={{ height: '100%', width: `${uploadProgress}%`, background: '#30D158', borderRadius: '2px', transition: 'width 0.2s' }} />
@@ -2229,43 +2334,56 @@ function App() {
                             </div>
                         )}
                         <div style={{ 
-                            border: `2px dashed ${audioFile ? '#30D158' : theme.border}`, 
+                            border: `2px dashed ${audioFiles.length > 0 ? '#30D158' : theme.border}`, 
                             borderRadius: '16px', padding: '30px 20px', textAlign: 'center', marginBottom: '16px',
-                            background: audioFile ? 'rgba(48, 209, 88, 0.05)' : 'transparent', transition: 'all 0.3s'
+                            background: audioFiles.length > 0 ? 'rgba(48, 209, 88, 0.05)' : 'transparent', transition: 'all 0.3s'
                         }}>
                             <label style={{ cursor: 'pointer', display: 'block' }}>
                                 <input 
-                                    type="file" accept=".mp3,.m4a,.wav,.ogg,.aac"
+                                    type="file" accept=".mp3,.m4a,.wav,.ogg,.aac" multiple
                                     onChange={e => {
-                                        const f = e.target.files[0];
-                                        setAudioFile(f);
-                                        if (f && !audioTitle) setAudioTitle(f.name.replace(/\.[^.]+$/, ''));
+                                        const files = Array.from(e.target.files);
+                                        setAudioFiles(files);
+                                        if (files.length === 1 && !audioTitle) {
+                                            setAudioTitle(files[0].name.replace(/\.[^.]+$/, ''));
+                                        }
                                     }}
                                     style={{ display: 'none' }}
                                 />
                                 <div style={{ fontSize: '2.5rem', marginBottom: '10px' }}>🎧</div>
-                                <div style={{ fontWeight: '600', color: audioFile ? '#30D158' : '#fff', marginBottom: '5px', wordBreak: 'break-all' }}>
-                                    {audioFile ? audioFile.name : "Selecciona tu archivo de audio"}
+                                <div style={{ fontWeight: '600', color: audioFiles.length > 0 ? '#30D158' : '#fff', marginBottom: '5px', wordBreak: 'break-all' }}>
+                                    {audioFiles.length > 0 
+                                        ? (audioFiles.length === 1 ? audioFiles[0].name : `${audioFiles.length} archivos seleccionados`)
+                                        : "Selecciona tus archivos de audio"
+                                    }
                                 </div>
                                 <div style={{ fontSize: '0.8rem', color: theme.textSecondary }}>
-                                    {audioFile ? `${(audioFile.size / 1024 / 1024).toFixed(1)} MB` : 'MP3, M4A, WAV, OGG — se sube a la nube'}
+                                    {audioFiles.length > 0 
+                                        ? `${(audioFiles.reduce((acc, f) => acc + f.size, 0) / 1024 / 1024).toFixed(1)} MB en total`
+                                        : 'MP3, M4A, WAV, OGG — se sube a la nube (puedes seleccionar varios)'
+                                    }
                                 </div>
                             </label>
                         </div>
 
-                        <input 
-                            type="text" placeholder="Título del audiolibro" value={audioTitle}
-                            onChange={e => setAudioTitle(e.target.value)}
-                            style={{ width: '100%', padding: '16px', background: '#2C2C2E', border: 'none', borderRadius: '12px', color: 'white', marginBottom: '24px', fontSize: '1rem', outline: 'none' }}
-                        />
+                        {audioFiles.length <= 1 && (
+                            <input 
+                                type="text" placeholder="Título del audiolibro" value={audioTitle}
+                                onChange={e => setAudioTitle(e.target.value)}
+                                style={{ width: '100%', padding: '16px', background: '#2C2C2E', border: 'none', borderRadius: '12px', color: 'white', marginBottom: '24px', fontSize: '1rem', outline: 'none' }}
+                            />
+                        )}
 
-                        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px' }}>
-                            <button onClick={() => { setShowAddModal(false); setAudioFile(null); setAudioTitle(''); }} className="btn-secondary">Cancelar</button>
+                        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px', marginTop: audioFiles.length > 1 ? '16px' : '0' }}>
+                            <button onClick={() => { setShowAddModal(false); setAudioFiles([]); setAudioTitle(''); }} className="btn-secondary">Cancelar</button>
                             <button 
-                                onClick={handleUploadAudio} disabled={uploadingAudio || !audioFile} className="btn-primary"
-                                style={{ opacity: (uploadingAudio || !audioFile) ? 0.6 : 1, cursor: (uploadingAudio || !audioFile) ? 'not-allowed' : 'pointer', background: '#30D158' }}
+                                onClick={handleUploadAudio} disabled={uploadingAudio || audioFiles.length === 0} className="btn-primary"
+                                style={{ opacity: (uploadingAudio || audioFiles.length === 0) ? 0.6 : 1, cursor: (uploadingAudio || audioFiles.length === 0) ? 'not-allowed' : 'pointer', background: '#30D158' }}
                             >
-                                {uploadingAudio ? `${uploadProgress < 100 ? `${uploadProgress}%` : 'Registrando...'}` : 'Subir Audio ☁️'}
+                                {uploadingAudio 
+                                    ? 'Subiendo... ☁' 
+                                    : (audioFiles.length > 1 ? `Subir ${audioFiles.length} Audios ☁` : 'Subir Audio ☁')
+                                }
                             </button>
                         </div>
                     </>
@@ -2277,7 +2395,12 @@ function App() {
       {/* MODAL PALABRA */}
       {selectedWord && (
           <>
-            <div onClick={() => { isPopupClosedByUser.current = true; setSelectedWord(null); }} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.1)', zIndex: 1100 }} />
+            <div onClick={() => {
+              if (Date.now() - modalOpenedTime.current > 400) {
+                isPopupClosedByUser.current = true;
+                setSelectedWord(null);
+              }
+            }} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.1)', zIndex: 1100 }} />
             <div style={{ 
                 position: 'fixed', bottom: 0, left: 0, right: 0, 
                 backgroundColor: theme.modalBg, backdropFilter: 'blur(30px)', WebkitBackdropFilter: 'blur(30px)',
@@ -2346,10 +2469,74 @@ function App() {
                             </button>
                         </div>
                     )}
+                    {selectedWord.fromCache && (
+                        <div style={{ 
+                            background: 'rgba(255, 159, 10, 0.05)',
+                            border: '1px dashed rgba(255, 159, 10, 0.25)',
+                            borderRadius: '16px',
+                            padding: '16px 20px',
+                            marginBottom: '20px',
+                            display: 'flex',
+                            flexDirection: 'column',
+                            alignItems: 'center',
+                            textAlign: 'center',
+                            gap: '8px'
+                        }}>
+                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>
+                                <span style={{ fontSize: '1rem' }}>⚠️</span>
+                                <span style={{ fontSize: '0.75rem', fontWeight: '700', letterSpacing: '0.5px', color: '#FF9F0A', textTransform: 'uppercase' }}>
+                                    Traducción Guardada
+                                </span>
+                            </div>
+                            <p style={{ margin: '0 0 4px 0', fontSize: '0.85rem', color: theme.textSecondary, lineHeight: '1.4' }}>
+                                El significado puede variar según el contexto actual.
+                            </p>
+                            <button 
+                                onClick={handleRefreshTranslation}
+                                style={{
+                                    alignSelf: 'center',
+                                    background: 'rgba(255, 159, 10, 0.12)',
+                                    color: '#FF9F0A',
+                                    border: '1px solid rgba(255, 159, 10, 0.2)',
+                                    borderRadius: '10px',
+                                    padding: '8px 16px',
+                                    fontSize: '0.8rem',
+                                    fontWeight: '600',
+                                    cursor: 'pointer',
+                                    transition: 'background 0.2s',
+                                    outline: 'none',
+                                    display: 'inline-flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    gap: '6px'
+                                }}
+                                onMouseOver={(e) => e.currentTarget.style.background = 'rgba(255, 159, 10, 0.22)'}
+                                onMouseOut={(e) => e.currentTarget.style.background = 'rgba(255, 159, 10, 0.12)'}
+                            >
+                                Re-analizar contexto 🔄
+                            </button>
+                        </div>
+                    )}
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '25px' }}>
                         <div className="card-info"><div className="label">ESPAÑOL</div><div className="val">{selectedWord.es}</div></div>
                         <div className="card-info"><div className="label">ENGLISH</div><div className="val">{selectedWord.en}</div></div>
                     </div>
+                    {selectedWord.alternatives && selectedWord.alternatives.length > 0 && (
+                        <div style={{ 
+                            background: 'rgba(255,255,255,0.04)', 
+                            padding: '16px 20px', 
+                            borderRadius: '16px', 
+                            marginBottom: '25px',
+                            border: '1px solid rgba(255,255,255,0.05)'
+                        }}>
+                            <div style={{ fontSize: '0.7rem', color: '#86868b', fontWeight: '700', marginBottom: '6px', letterSpacing: '0.5px', textTransform: 'uppercase' }}>
+                                Otras Acepciones / Alternativas
+                            </div>
+                            <div style={{ fontSize: '1.05rem', fontWeight: '600', color: '#fff' }}>
+                                {selectedWord.alternatives.join(', ')}
+                            </div>
+                        </div>
+                    )}
                     <div style={{ paddingLeft: '8px' }}>
                         <h3 style={{ fontSize: '0.8rem', color: theme.textSecondary, textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '12px' }}>Contexto</h3>
                         <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>

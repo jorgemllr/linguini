@@ -184,3 +184,61 @@ def delete_cached_word(word, language):
     except Exception as e:
         print(f"❌ Excepción al eliminar palabra en Supabase: {e}")
     return {"word": word.lower(), "language": language.lower(), "deleted": False}
+
+# --- SUPABASE STORAGE ---
+
+def get_storage_headers(content_type="application/octet-stream"):
+    return {
+        "apikey": SUPABASE_KEY,
+        "Authorization": f"Bearer {SUPABASE_KEY}",
+        "Content-Type": content_type,
+    }
+
+def upload_to_storage(file_bytes, storage_path, content_type="application/octet-stream"):
+    """Upload file bytes to Supabase Storage 'media' bucket. Returns public URL or None."""
+    if not SUPABASE_URL or not SUPABASE_KEY:
+        return None
+    url = f"{SUPABASE_URL}/storage/v1/object/media/{storage_path}"
+    try:
+        r = requests.post(url, data=file_bytes, headers=get_storage_headers(content_type))
+        if r.status_code in [200, 201]:
+            return get_public_storage_url(storage_path)
+        else:
+            print(f"❌ Error al subir a Supabase Storage: {r.status_code} - {r.text}")
+    except Exception as e:
+        print(f"❌ Excepción al subir a Storage: {e}")
+    return None
+
+def download_from_storage(storage_path):
+    """Download file bytes from Supabase Storage 'media' bucket."""
+    if not SUPABASE_URL or not SUPABASE_KEY:
+        return None
+    url = f"{SUPABASE_URL}/storage/v1/object/media/{storage_path}"
+    try:
+        r = requests.get(url, headers=get_headers())
+        if r.status_code == 200:
+            return r.content
+        else:
+            print(f"❌ Error al descargar de Storage: {r.status_code} - {r.text}")
+    except Exception as e:
+        print(f"❌ Excepción al descargar de Storage: {e}")
+    return None
+
+def delete_from_storage(storage_path):
+    """Delete a file from Supabase Storage 'media' bucket."""
+    if not SUPABASE_URL or not SUPABASE_KEY:
+        return False
+    url = f"{SUPABASE_URL}/storage/v1/object/media/{storage_path}"
+    try:
+        r = requests.delete(url, headers=get_headers())
+        return r.status_code in [200, 204]
+    except Exception as e:
+        print(f"❌ Excepción al eliminar de Storage: {e}")
+    return False
+
+def get_public_storage_url(storage_path):
+    """Return the public URL for a file in the Supabase Storage 'media' bucket."""
+    if not SUPABASE_URL:
+        return None
+    return f"{SUPABASE_URL}/storage/v1/object/public/media/{storage_path}"
+

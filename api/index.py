@@ -9,7 +9,11 @@ import uuid
 # pueda resolver 'database' (que está en la misma carpeta que index.py)
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-from database import init_db, get_all_documents, insert_document, get_cached_word, insert_cached_word, delete_cached_word, update_document, update_document_progress
+from database import (
+    init_db, get_all_documents, insert_document, get_cached_word,
+    insert_cached_word, delete_cached_word, update_document, update_document_progress,
+    download_from_storage, delete_from_storage, get_public_storage_url
+)
 
 # Detectar si estamos corriendo en Vercel (producción) o en local
 IS_VERCEL = os.environ.get("VERCEL") == "1"
@@ -205,40 +209,120 @@ def remove_word_cache():
 
 # --- ENDPOINTS SYNCTHING / OBSIDIAN LOCAL FILE SCANNING ---
 
+# Legacy endpoint — archivos locales ya no se usan (arquitectura cloud)
 @app.route('/api/local-files', methods=['GET'])
 def list_local_files():
-    if IS_VERCEL:
-        # En Vercel no hay sistema de archivos local; devolver listas vacías
-        return jsonify({"unprocessed_pdfs": [], "audiobooks": []})
+    # El escaneo de carpetas locales fue reemplazado por upload directo a Supabase Storage
+    return jsonify({"unprocessed_pdfs": [], "audiobooks": []})
+
+
+@app.route('/api/process-storage-pdf', methods=['POST'])
+def process_storage_pdf():
+    """Descarga un PDF de Supabase Storage, extrae texto y subrayados, guarda en Supabase, elimina el PDF."""
+    import fitz
     try:
-        import glob
-        # 1. Obtener PDFs disponibles en Books/
-        pdf_paths = glob.glob(str(BOOKS_DIR / "*.pdf"))
-        pdfs = [os.path.basename(p) for p in pdf_paths]
-        
-        # 2. Obtener audiolibros disponibles en Audiobooks/
-        audio_extensions = ["*.mp3", "*.m4a", "*.wav", "*.ogg"]
-        audio_files = []
-        for ext in audio_extensions:
-            audio_paths = glob.glob(str(AUDIOBOOKS_DIR / ext))
-            audio_files.extend([os.path.basename(p) for p in audio_paths])
-            
-        # 3. Filtrar cuáles PDFs ya han sido procesados y guardados en Supabase
-        docs = get_all_documents()
-        processed_titles = {d["title"] for d in docs}
-        
-        unprocessed_pdfs = []
-        for pdf in pdfs:
-            doc_title = f"Subrayados: {pdf}"
-            if doc_title not in processed_titles:
-                unprocessed_pdfs.append(pdf)
-                
-        return jsonify({
-            "unprocessed_pdfs": sorted(unprocessed_pdfs),
-            "audiobooks": sorted(list(set(audio_files)))
-        })
+        data = request.json
+        storage_path = data.get('storage_path')  # ej. "pdfs/mybook.pdf"
+        filename = data.get('filename')
+        language = data.get('language', 'en')
+
+        if not storage_path or not filename:
+            return jsonify({"error": "Faltan 'storage_path' o 'filename'"}), 400
+
+        # 1. Descargar PDF de Supabase Storage
+        pdf_bytes = download_from_storage(storage_path)
+        if not pdf_bytes:
+            return jsonify({"error": "No se pudo descargar el PDF de Supabase Storage"}), 500
+
+        # 2. Extraer texto y subrayados con PyMuPDF
+        doc = fitz.open(stream=pdf_bytes, filetype="pdf")
+        highlights = []
+        seen_words = set()
+        full_text_pages = []
+
+        for page_num in range(len(doc)):
+            page = doc[page_num]
+            blocks = page.get_text("blocks")
+            blocks.sort(key=lambda b: (b[1], b[0]))
+            page_paragraphs = []
+            for b in blocks:
+                if b[6] == 0:
+                    paragraph_text = b[4].replace('\n', ' ').strip()
+                    if paragraph_text:
+                        page_paragraphs.append(paragraph_text)
+            if page_paragraphs:
+                full_text_pages.append(f"<!-- PAGE {page_num + 1} -->\n" + "\n\n".join(page_paragraphs))
+
+            annots = page.annots()
+            if not annots:
+                continue
+            page_words = page.get_text("words")
+            for annot in annots:
+                annot_type = annot.type[1].lower() if len(annot.type) > 1 else ""
+                if annot_type in ["highlight", "underline"] or annot.type[0] in [8, 9]:
+                    rect = annot.rect
+                    intersecting = []
+                    for w in page_words:
+                        word_rect = fitz.Rect(w[:4])
+                        if word_rect.intersects(rect):
+                            overlap = word_rect & rect
+                            area = overlap.width * overlap.height if not overlap.is_empty else 0
+                            word_area = word_rect.width * word_rect.height
+                            if word_area > 0 and (area / word_area) >= 0.4:
+                                intersecting.append(w)
+                    if not intersecting or len(intersecting) > 3:
+                        continue
+                    intersecting.sort(key=lambda x: (x[6], x[0]))
+                    highlighted_text = " ".join([w[4] for w in intersecting])
+                    clean_word = highlighted_text.strip(".,/#!$%^&*;:{}=-_`~()[]¿?¡!«»\"'")
+                    if not clean_word:
+                        continue
+                    word_key = clean_word.lower()
+                    if word_key in seen_words:
+                        continue
+                    seen_words.add(word_key)
+                    first_block = intersecting[0][5]
+                    context = next((b[4].replace('\n', ' ').strip() for b in blocks if b[5] == first_block), highlighted_text)
+                    highlights.append({"word": clean_word, "context": context, "page": page_num + 1})
+
+        doc.close()
+
+        words_list = ", ".join([h["word"] for h in highlights])
+        final_content = "\n\n".join(full_text_pages) + "\n---\n" + words_list
+        doc_title = f"Subrayados: {filename}"
+        doc_id = str(uuid.uuid4())
+        saved_doc = insert_document(doc_id, doc_title, final_content, language)
+
+        # 3. Eliminar el PDF de Storage (ya no lo necesitamos, sólo el texto)
+        delete_from_storage(storage_path)
+
+        print(f"✅ PDF procesado desde Storage: {filename} ({len(highlights)} subrayados)")
+        return jsonify(saved_doc)
     except Exception as e:
-        print(f"❌ Error al listar archivos locales: {e}")
+        print(f"❌ Error al procesar PDF de Storage: {e}")
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route('/api/register-audio', methods=['POST'])
+def register_audio():
+    """Registra un archivo de audio que ya fue subido a Supabase Storage desde el frontend."""
+    try:
+        data = request.json
+        filename = data.get('filename')
+        title = data.get('title', filename)
+        storage_path = data.get('storage_path')  # ej. "audios/mybook.mp3"
+
+        if not filename or not storage_path:
+            return jsonify({"error": "Faltan 'filename' o 'storage_path'"}), 400
+
+        audio_url = get_public_storage_url(storage_path)
+        doc_id = str(uuid.uuid4())
+        # Guardamos como documento con contenido vacío pero con audio_url
+        doc = insert_document(doc_id, title, "", language='audio', audio_url=audio_url)
+        print(f"✅ Audio registrado: {title} → {audio_url}")
+        return jsonify(doc)
+    except Exception as e:
+        print(f"❌ Error al registrar audio: {e}")
         return jsonify({"error": str(e)}), 500
 
 @app.route('/api/process-local-pdf', methods=['POST'])

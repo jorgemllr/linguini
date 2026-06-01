@@ -4,6 +4,31 @@ import rawTranscript from './transcript.txt?raw';
 
 const getApiUrl = (path) => import.meta.env.DEV ? `http://localhost:5000${path}` : path;
 
+// Supabase Storage: direct browser upload (bypasses Vercel 4.5MB limit)
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || '';
+const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY || '';
+
+const uploadToSupabaseStorage = async (file, storagePath, onProgress) => {
+  return new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    xhr.open('POST', `${SUPABASE_URL}/storage/v1/object/media/${storagePath}`);
+    xhr.setRequestHeader('Authorization', `Bearer ${SUPABASE_ANON_KEY}`);
+    xhr.setRequestHeader('Content-Type', file.type || 'application/octet-stream');
+    xhr.upload.onprogress = (e) => {
+      if (e.lengthComputable && onProgress) onProgress(Math.round((e.loaded / e.total) * 100));
+    };
+    xhr.onload = () => {
+      if (xhr.status >= 200 && xhr.status < 300) {
+        resolve(`${SUPABASE_URL}/storage/v1/object/public/media/${storagePath}`);
+      } else {
+        reject(new Error(`Storage upload failed: ${xhr.status} ${xhr.responseText}`));
+      }
+    };
+    xhr.onerror = () => reject(new Error('Network error during upload'));
+    xhr.send(file);
+  });
+};
+
 // --- ICONOS SVG ---
 const MenuIcon = () => <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>;
 const PlusIcon = () => <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>;
@@ -176,14 +201,13 @@ function App() {
   const lastProcessedIdx = useRef(null);
   const isPopupClosedByUser = useRef(false);
 
-  // --- NUEVOS ESTADOS PARA INTEGRACIÓN DE OBSIDIAN Y REPRODUCTOR DESACOPLADO ---
-  const [localPdfs, setLocalPdfs] = useState([]);
-  const [localAudiobooks, setLocalAudiobooks] = useState([]);
-  const [sidebarSections, setSidebarSections] = useState({ books: true, audios: true });
-  const [showProcessModal, setShowProcessModal] = useState(false);
-  const [selectedLocalPdf, setSelectedLocalPdf] = useState(null);
-  const [localPdfLang, setLocalPdfLang] = useState("de");
-  const [processingLocalPdf, setProcessingLocalPdf] = useState(false);
+  // --- CLOUD UPLOAD STATE ---
+  const [audioFile, setAudioFile] = useState(null);
+  const [audioTitle, setAudioTitle] = useState('');
+  const [uploadingAudio, setUploadingAudio] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [importingPdfCloud, setImportingPdfCloud] = useState(false);
+  const [pdfUploadProgress, setPdfUploadProgress] = useState(0);
 
   // --- ESTADOS PARA PREVISUALIZACIÓN DE TIEMPO (SEEK HOVER) ---
   const [hoverTime, setHoverTime] = useState(null);
@@ -323,48 +347,10 @@ function App() {
     };
   }, [currentDoc?.id]);
 
-  // --- MÉTODO PARA LISTAR ARCHIVOS LOCALES EN OBSIDIAN ---
-  const fetchLocalFiles = async () => {
-    try {
-      const res = await fetch(getApiUrl('/api/local-files'));
-      const data = await res.json();
-      if (data) {
-        setLocalPdfs(data.unprocessed_pdfs || []);
-        setLocalAudiobooks(data.audiobooks || []);
-      }
-    } catch (err) {
-      console.warn("⚠️ No se pudieron cargar los archivos locales:", err);
-    }
-  };
+  // Audiobooks derivados de documentos con language='audio'
+  const cloudAudiobooks = useMemo(() => documents.filter(d => d.language === 'audio'), [documents]);
 
-  // --- PROCESAMIENTO BAJO DEMANDA DE PDF LOCAL ---
-  const handleProcessLocalPdf = async () => {
-    if (!selectedLocalPdf) return;
-    setProcessingLocalPdf(true);
-    try {
-      const res = await fetch(getApiUrl('/api/process-local-pdf'), {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ filename: selectedLocalPdf, language: localPdfLang })
-      });
-      const newDoc = await res.json();
-      if (newDoc.error) throw new Error(newDoc.error);
-      
-      setDocuments(prev => [newDoc, ...prev]);
-      setCurrentDoc(newDoc);
-      setShowProcessModal(false);
-      setSelectedLocalPdf(null);
-      
-      // Volver a listar archivos para actualizar las listas del sidebar
-      await fetchLocalFiles();
-      
-      alert(`🎉 Libro procesado con éxito e importado a la biblioteca.`);
-    } catch (err) {
-      alert("Error al procesar el libro local: " + err.message);
-    } finally {
-      setProcessingLocalPdf(false);
-    }
-  };
+  const [sidebarSections, setSidebarSections] = useState({ books: true, audios: true });
 
   // 1. Cargar documentos y archivos de Obsidian en startup
   useEffect(() => {
@@ -407,7 +393,6 @@ function App() {
         }
     };
     fetchDocs();
-    fetchLocalFiles();
   }, []);
 
   // 2. Guardar documento
@@ -436,94 +421,88 @@ function App() {
     }
   };
 
-  // 2b. Importar y procesar PDF
+  // 2b. Importar PDF via Supabase Storage (evita el límite de 4.5MB de Vercel)
   const handleImportPdf = async () => {
     if (!pdfFile) return alert("Por favor selecciona un archivo PDF.");
+    if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
+      return alert("Supabase no está configurado. Verifica las variables de entorno VITE_SUPABASE_URL y VITE_SUPABASE_ANON_KEY.");
+    }
     setImportingPdf(true);
+    setPdfUploadProgress(0);
 
-    const formData = new FormData();
-    formData.append("file", pdfFile);
-
-    const IMPORT_URL = import.meta.env.DEV ? 'http://localhost:5000/api/import-pdf' : '/api/import-pdf';
     try {
-      const res = await fetch(IMPORT_URL, {
+      // 1. Subir PDF a Supabase Storage
+      const storagePath = `pdfs/${Date.now()}_${pdfFile.name.replace(/\s+/g, '_')}`;
+      await uploadToSupabaseStorage(pdfFile, storagePath, (pct) => setPdfUploadProgress(pct));
+
+      // 2. Llamar al backend para extraer texto y guardar en Supabase
+      const res = await fetch(getApiUrl('/api/process-storage-pdf'), {
         method: 'POST',
-        body: formData
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ storage_path: storagePath, filename: pdfFile.name, language: pdfLang })
       });
-      const data = await res.json();
-      if (data.error) throw new Error(data.error);
+      const savedDoc = await res.json();
+      if (savedDoc.error) throw new Error(savedDoc.error);
 
-      const highlights = data.highlights || [];
-      if (highlights.length === 0) {
-        alert("No se encontraron subrayados (Highlights o Underlines) en este PDF.");
-        setImportingPdf(false);
-        return;
-      }
+      setDocuments(prev => [savedDoc, ...prev]);
+      setCurrentDoc(savedDoc);
+      setShowAddModal(false);
+      setPdfFile(null);
+      setPdfAudioUrl('');
+      setPdfUploadProgress(0);
 
-      // Filtrar duplicados
-      const uniqueHighlights = [];
-      const seenWords = new Set();
-      highlights.forEach(h => {
-        const clean = h.word.trim();
-        const key = clean.toLowerCase();
-        if (clean && !seenWords.has(key)) {
-          seenWords.add(key);
-          uniqueHighlights.push(h);
-        }
-      });
+      // Pre-cachear palabras subrayadas en segundo plano
+      const parts = (savedDoc.content || '').split('\n---\n');
+      const wordsPart = parts[1] || '';
+      const highlights = wordsPart.split(',').map(w => ({ word: w.trim(), context: '' })).filter(h => h.word);
+      if (highlights.length > 0) preCacheWords(highlights, pdfLang);
 
-      // Construir contenido con metadatos
-      const contexts = uniqueHighlights.map(h => h.context).join('\n\n');
-      const wordsList = uniqueHighlights.map(h => h.word).join(', ');
-      const finalContent = `${contexts}\n---\n${wordsList}`;
-
-      // Guardar en Supabase o memoria local si falla
-      const docTitle = `Subrayados: ${data.filename}`;
-      const extWords = uniqueHighlights.map(h => h.word).join(', ');
-      alert(`🎉 ¡Éxito al extraer del PDF!\nSe identificaron ${uniqueHighlights.length} palabras subrayadas:\n\n${extWords}`);
-
-      try {
-        const res = await fetch(getApiUrl('/api/documents'), {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ title: docTitle, content: finalContent, language: pdfLang, audio_url: pdfAudioUrl })
-        });
-        const newDoc = await res.json();
-        if (newDoc.error) throw new Error(newDoc.error);
-
-        setDocuments(prev => [newDoc, ...prev]);
-        setCurrentDoc(newDoc);
-        setShowAddModal(false);
-        setPdfFile(null);
-        setPdfAudioUrl("");
-        
-        // Disparar la pre-caché de palabras en segundo plano
-        preCacheWords(uniqueHighlights, pdfLang);
-        fetchLocalFiles();
-      } catch (dbErr) {
-        console.warn("⚠️ Error al guardar en base de datos local SQLite, cargando en memoria local...", dbErr);
-        
-        const localDoc = {
-          id: `local-${Date.now()}`,
-          title: `${docTitle} (Temporal - Error de Red)`,
-          content: finalContent,
-          language: pdfLang,
-          audio_url: pdfAudioUrl,
-          created_at: new Date().toISOString()
-        };
-        
-        setDocuments(prev => [localDoc, ...prev]);
-        setCurrentDoc(localDoc);
-        setShowAddModal(false);
-        setPdfFile(null);
-        
-        // Disparar pre-caché igualmente
-        preCacheWords(uniqueHighlights, pdfLang);
-      }
+      alert(`🎉 PDF importado con éxito. ${highlights.length} palabras subrayadas encontradas.`);
     } catch (e) {
       alert("Error al importar PDF: " + e.message);
     } finally {
       setImportingPdf(false);
+      setPdfUploadProgress(0);
+    }
+  };
+
+  // 2c. Subir audio a Supabase Storage y registrar en la base de datos
+  const handleUploadAudio = async () => {
+    if (!audioFile) return alert("Por favor selecciona un archivo de audio.");
+    if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
+      return alert("Supabase no está configurado. Verifica las variables de entorno.");
+    }
+    setUploadingAudio(true);
+    setUploadProgress(0);
+
+    try {
+      // 1. Subir MP3 directamente a Supabase Storage desde el browser
+      const storagePath = `audios/${Date.now()}_${audioFile.name.replace(/\s+/g, '_')}`;
+      await uploadToSupabaseStorage(audioFile, storagePath, (pct) => setUploadProgress(pct));
+
+      // 2. Registrar metadata en Supabase via backend
+      const title = audioTitle.trim() || audioFile.name.replace(/\.[^.]+$/, '');
+      const res = await fetch(getApiUrl('/api/register-audio'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ filename: audioFile.name, title, storage_path: storagePath })
+      });
+      const newDoc = await res.json();
+      if (newDoc.error) throw new Error(newDoc.error);
+
+      setDocuments(prev => [newDoc, ...prev]);
+      setShowAddModal(false);
+      setAudioFile(null);
+      setAudioTitle('');
+      setUploadProgress(0);
+
+      // Activar el audio recién subido
+      setActiveAudio({ url: newDoc.audio_url, title: newDoc.title });
+    } catch (e) {
+      alert("Error al subir audio: " + e.message);
+    } finally {
+      setUploadingAudio(false);
+      setUploadProgress(0);
     }
   };
 
@@ -1969,15 +1948,12 @@ function App() {
                   
                   {sidebarSections.audios && (
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', paddingLeft: '4px', marginTop: '2px' }}>
-                          {localAudiobooks.map(filename => {
-                              const isActive = activeAudio?.title === filename;
+                          {cloudAudiobooks.map(doc => {
+                              const isActive = activeAudio?.url === doc.audio_url;
                               return (
-                                  <div key={filename} 
+                                  <div key={doc.id} 
                                        onClick={() => {
-                                           setActiveAudio({
-                                               url: getApiUrl(`/api/audiobooks/${encodeURIComponent(filename)}`),
-                                               title: filename
-                                           });
+                                           setActiveAudio({ url: doc.audio_url, title: doc.title });
                                            setSidebarOpen(false);
                                        }}
                                        style={{ 
@@ -1992,7 +1968,7 @@ function App() {
                                   >
                                       <AudioIcon />
                                       <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>
-                                          {filename}
+                                          {doc.title}
                                       </span>
                                       {isActive && (
                                           <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#30D158', display: 'inline-block' }} />
@@ -2001,9 +1977,9 @@ function App() {
                               );
                           })}
                           
-                          {localAudiobooks.length === 0 && (
+                          {cloudAudiobooks.length === 0 && (
                               <div style={{ padding: '12px', fontSize: '0.85rem', color: theme.textSecondary, fontStyle: 'italic', textAlign: 'center' }}>
-                                  Coloca archivos en tu carpeta Obsidian/Audiobooks
+                                  Sube un audiolibro con el botón +
                               </div>
                           )}
                       </div>
@@ -2121,68 +2097,7 @@ function App() {
         </div>
       )}
 
-      {/* MODAL CONFIGURACIÓN PROCESAMIENTO PDF BAJO DEMANDA */}
-      {showProcessModal && (
-        <div style={{ position: 'fixed', inset: 0, zIndex: 2100, background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(8px)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <div style={{ background: '#1C1C1E', width: '90%', maxWidth: '420px', padding: '30px', borderRadius: '24px', boxShadow: '0 25px 50px rgba(0,0,0,0.7)', border: `1px solid ${theme.border}` }}>
-                <h3 style={{ marginTop: 0, color: 'white', marginBottom: '10px', fontSize: '1.25rem', fontWeight: '700' }}>Procesar Libro Local</h3>
-                <p style={{ fontSize: '0.85rem', color: theme.textSecondary, marginBottom: '20px', lineHeight: '1.5' }}>
-                    Se extraerá el texto completo y los subrayados de <strong style={{ color: '#fff' }}>{selectedLocalPdf}</strong>. Una vez guardado en la base de datos local SQLite, podrás leerlo sin depender del archivo original.
-                </p>
 
-                 <div style={{ marginBottom: '24px' }}>
-                    <label style={{ display: 'block', fontSize: '0.75rem', color: theme.textSecondary, marginBottom: '8px', fontWeight: '700', letterSpacing: '0.5px' }}>IDIOMA DEL TEXTO</label>
-                    <div style={{ position: 'relative', width: '100%' }}>
-                        <select 
-                            value={localPdfLang} onChange={e => setLocalPdfLang(e.target.value)}
-                            style={{ 
-                                appearance: 'none',
-                                WebkitAppearance: 'none',
-                                MozAppearance: 'none',
-                                width: '100%', 
-                                padding: '16px 40px 16px 16px', 
-                                background: '#2C2C2E', 
-                                border: 'none', 
-                                borderRadius: '12px', 
-                                color: 'white', 
-                                fontSize: '1rem', 
-                                outline: 'none', 
-                                cursor: 'pointer' 
-                            }}
-                        >
-                            <option value="de">Alemán (Deutsch)</option>
-                            <option value="en">Inglés (English)</option>
-                            <option value="es">Español (Español)</option>
-                            <option value="fr">Francés (Français)</option>
-                        </select>
-                        <div style={{ position: 'absolute', right: '16px', top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none', display: 'flex', alignItems: 'center', opacity: 0.6, color: '#fff' }}>
-                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
-                        </div>
-                    </div>
-                </div>
-
-                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px' }}>
-                    <button onClick={() => { setShowProcessModal(false); setSelectedLocalPdf(null); }} className="btn-secondary">Cancelar</button>
-                    <button 
-                        onClick={handleProcessLocalPdf} className="btn-primary"
-                    >
-                        Comenzar
-                    </button>
-                </div>
-            </div>
-        </div>
-      )}
-
-      {/* OVERLAY DE CARGA EN PROCESAMIENTO */}
-      {processingLocalPdf && (
-        <div style={{ position: 'fixed', inset: 0, zIndex: 9999, background: 'rgba(17, 17, 17, 0.9)', backdropFilter: 'blur(10px)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', color: 'white' }}>
-            <div className="spinner" style={{ width: '50px', height: '50px', border: '4px solid rgba(255,255,255,0.1)', borderTop: `4px solid ${theme.accent}`, borderRadius: '50%', animation: 'spin 1s linear infinite', marginBottom: '20px' }} />
-            <h3 style={{ margin: '0 0 10px 0', fontWeight: '600' }}>Procesando PDF en segundo plano</h3>
-            <p style={{ margin: 0, fontSize: '0.9rem', color: theme.textSecondary, maxWidth: '300px', textAlign: 'center', lineHeight: '1.5' }}>
-                Extrayendo texto página por página y filtrando subrayados precisos...
-            </p>
-        </div>
-      )}
 
       {/* MODAL AGREGAR TEXTO */}
       {showAddModal && (
@@ -2204,7 +2119,14 @@ function App() {
                         fontSize: '0.95rem', fontWeight: '600', cursor: 'pointer', outline: 'none',
                         borderBottom: importTab === 'pdf' ? `2px solid ${theme.accent}` : 'none', paddingBottom: '5px'
                     }}>
-                        Importar PDF (Acrobat)
+                        Importar PDF
+                    </button>
+                    <button onClick={() => setImportTab("audio")} style={{ 
+                        background: 'none', border: 'none', color: importTab === 'audio' ? '#30D158' : theme.textSecondary,
+                        fontSize: '0.95rem', fontWeight: '600', cursor: 'pointer', outline: 'none',
+                        borderBottom: importTab === 'audio' ? `2px solid #30D158` : 'none', paddingBottom: '5px'
+                    }}>
+                        🎧 Audio
                     </button>
                 </div>
 
@@ -2223,8 +2145,20 @@ function App() {
                             <button onClick={handleSaveDocument} className="btn-primary">{isSaving ? 'Guardando...' : 'Guardar'}</button>
                         </div>
                     </>
-                ) : (
+                ) : importTab === "pdf" ? (
                     <>
+                        {/* Upload progress bar */}
+                        {importingPdf && pdfUploadProgress > 0 && pdfUploadProgress < 100 && (
+                            <div style={{ marginBottom: '16px' }}>
+                                <div style={{ fontSize: '0.8rem', color: theme.textSecondary, marginBottom: '6px' }}>Subiendo PDF... {pdfUploadProgress}%</div>
+                                <div style={{ height: '4px', background: 'rgba(255,255,255,0.1)', borderRadius: '2px' }}>
+                                    <div style={{ height: '100%', width: `${pdfUploadProgress}%`, background: theme.accent, borderRadius: '2px', transition: 'width 0.2s' }} />
+                                </div>
+                            </div>
+                        )}
+                        {importingPdf && pdfUploadProgress >= 100 && (
+                            <div style={{ marginBottom: '16px', fontSize: '0.8rem', color: '#30D158' }}>✅ PDF subido. Procesando texto...</div>
+                        )}
                         <div style={{ 
                             border: `2px dashed ${pdfFile ? theme.accent : theme.border}`, 
                             borderRadius: '16px', padding: '30px 20px', textAlign: 'center', marginBottom: '20px',
@@ -2250,20 +2184,7 @@ function App() {
                             <div style={{ position: 'relative', width: '100%' }}>
                                 <select 
                                     value={pdfLang} onChange={e => setPdfLang(e.target.value)}
-                                    style={{ 
-                                        appearance: 'none',
-                                        WebkitAppearance: 'none',
-                                        MozAppearance: 'none',
-                                        width: '100%', 
-                                        padding: '16px 40px 16px 16px', 
-                                        background: '#2C2C2E', 
-                                        border: 'none', 
-                                        borderRadius: '12px', 
-                                        color: 'white', 
-                                        fontSize: '1rem', 
-                                        outline: 'none', 
-                                        cursor: 'pointer' 
-                                    }}
+                                    style={{ appearance: 'none', WebkitAppearance: 'none', MozAppearance: 'none', width: '100%', padding: '16px 40px 16px 16px', background: '#2C2C2E', border: 'none', borderRadius: '12px', color: 'white', fontSize: '1rem', outline: 'none', cursor: 'pointer' }}
                                 >
                                     <option value="en">Inglés (English)</option>
                                     <option value="de">Alemán (Deutsch)</option>
@@ -2276,21 +2197,67 @@ function App() {
                             </div>
                         </div>
 
-                        <div style={{ marginBottom: '24px' }}>
-                            <label style={{ display: 'block', fontSize: '0.8rem', color: theme.textSecondary, marginBottom: '8px', fontWeight: '700', letterSpacing: '0.5px' }}>VINCULAR AUDIOLIBRO (OPCIONAL)</label>
-                            <input 
-                                type="text" placeholder="Ruta del audio (ej. /podcast.mp3)" value={pdfAudioUrl} onChange={e => setPdfAudioUrl(e.target.value)}
-                                style={{ width: '100%', padding: '16px', background: '#2C2C2E', border: 'none', borderRadius: '12px', color: 'white', fontSize: '1rem', outline: 'none' }}
-                            />
-                        </div>
-
                         <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px' }}>
                             <button onClick={() => { setShowAddModal(false); setPdfFile(null); }} className="btn-secondary">Cancelar</button>
                             <button 
                                 onClick={handleImportPdf} disabled={importingPdf} className="btn-primary"
                                 style={{ opacity: importingPdf ? 0.6 : 1, cursor: importingPdf ? 'not-allowed' : 'pointer' }}
                             >
-                                {importingPdf ? 'Procesando subrayados...' : 'Importar y Analizar'}
+                                {importingPdf ? (pdfUploadProgress < 100 ? `Subiendo ${pdfUploadProgress}%...` : 'Procesando...') : 'Importar y Analizar'}
+                            </button>
+                        </div>
+                    </>
+                ) : (
+                    /* TAB AUDIO */
+                    <>
+                        {uploadingAudio && uploadProgress > 0 && (
+                            <div style={{ marginBottom: '16px' }}>
+                                <div style={{ fontSize: '0.8rem', color: theme.textSecondary, marginBottom: '6px' }}>
+                                    {uploadProgress < 100 ? `Subiendo audio... ${uploadProgress}%` : '✅ Subido. Registrando...'}
+                                </div>
+                                <div style={{ height: '4px', background: 'rgba(255,255,255,0.1)', borderRadius: '2px' }}>
+                                    <div style={{ height: '100%', width: `${uploadProgress}%`, background: '#30D158', borderRadius: '2px', transition: 'width 0.2s' }} />
+                                </div>
+                            </div>
+                        )}
+                        <div style={{ 
+                            border: `2px dashed ${audioFile ? '#30D158' : theme.border}`, 
+                            borderRadius: '16px', padding: '30px 20px', textAlign: 'center', marginBottom: '16px',
+                            background: audioFile ? 'rgba(48, 209, 88, 0.05)' : 'transparent', transition: 'all 0.3s'
+                        }}>
+                            <label style={{ cursor: 'pointer', display: 'block' }}>
+                                <input 
+                                    type="file" accept=".mp3,.m4a,.wav,.ogg,.aac"
+                                    onChange={e => {
+                                        const f = e.target.files[0];
+                                        setAudioFile(f);
+                                        if (f && !audioTitle) setAudioTitle(f.name.replace(/\.[^.]+$/, ''));
+                                    }}
+                                    style={{ display: 'none' }}
+                                />
+                                <div style={{ fontSize: '2.5rem', marginBottom: '10px' }}>🎧</div>
+                                <div style={{ fontWeight: '600', color: audioFile ? '#30D158' : '#fff', marginBottom: '5px', wordBreak: 'break-all' }}>
+                                    {audioFile ? audioFile.name : "Selecciona tu archivo de audio"}
+                                </div>
+                                <div style={{ fontSize: '0.8rem', color: theme.textSecondary }}>
+                                    {audioFile ? `${(audioFile.size / 1024 / 1024).toFixed(1)} MB` : 'MP3, M4A, WAV, OGG — se sube a la nube'}
+                                </div>
+                            </label>
+                        </div>
+
+                        <input 
+                            type="text" placeholder="Título del audiolibro" value={audioTitle}
+                            onChange={e => setAudioTitle(e.target.value)}
+                            style={{ width: '100%', padding: '16px', background: '#2C2C2E', border: 'none', borderRadius: '12px', color: 'white', marginBottom: '24px', fontSize: '1rem', outline: 'none' }}
+                        />
+
+                        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px' }}>
+                            <button onClick={() => { setShowAddModal(false); setAudioFile(null); setAudioTitle(''); }} className="btn-secondary">Cancelar</button>
+                            <button 
+                                onClick={handleUploadAudio} disabled={uploadingAudio || !audioFile} className="btn-primary"
+                                style={{ opacity: (uploadingAudio || !audioFile) ? 0.6 : 1, cursor: (uploadingAudio || !audioFile) ? 'not-allowed' : 'pointer', background: '#30D158' }}
+                            >
+                                {uploadingAudio ? `${uploadProgress < 100 ? `${uploadProgress}%` : 'Registrando...'}` : 'Subir Audio ☁️'}
                             </button>
                         </div>
                     </>

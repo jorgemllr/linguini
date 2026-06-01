@@ -1894,32 +1894,9 @@ function App() {
                               </div>
                           ))}
                           
-                          {/* 2. Libros No Procesados en la carpeta Books */}
-                          {localPdfs.map(filename => (
-                              <div key={filename} 
-                                   onClick={() => { setSelectedLocalPdf(filename); setLocalPdfLang("de"); setShowProcessModal(true); setSidebarOpen(false); }}
-                                   style={{ 
-                                       display: 'flex', alignItems: 'center', gap: '10px',
-                                       padding: '10px 12px', borderRadius: '10px', cursor: 'pointer',
-                                       border: `1px dashed rgba(255, 255, 255, 0.15)`,
-                                       color: theme.textSecondary,
-                                       transition: 'all 0.15s', fontSize: '0.9rem',
-                                       marginTop: '2px'
-                                   }}
-                                   onMouseOver={(e) => { e.currentTarget.style.borderColor = theme.accent; e.currentTarget.style.color = '#fff'; }}
-                                   onMouseOut={(e) => { e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.15)'; e.currentTarget.style.color = theme.textSecondary; }}
-                              >
-                                  <CloudIcon />
-                                  <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>
-                                      {filename}
-                                  </span>
-                                  <span style={{ fontSize: '0.7rem', padding: '2px 6px', borderRadius: '4px', background: 'rgba(255,255,255,0.08)', fontWeight: '600', letterSpacing: '0.2px' }}>NUEVO</span>
-                              </div>
-                          ))}
-                          
-                          {documents.length === 0 && localPdfs.length === 0 && (
+                          {documents.length === 0 && (
                               <div style={{ padding: '12px', fontSize: '0.85rem', color: theme.textSecondary, fontStyle: 'italic', textAlign: 'center' }}>
-                                  Coloca archivos PDF en tu carpeta Obsidian/Books
+                                  Importa tu primer PDF con el botón +
                               </div>
                           )}
                       </div>

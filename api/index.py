@@ -1,8 +1,14 @@
 from flask import Flask, request, jsonify, send_from_directory
 from flask_cors import CORS
 import os
+import sys
 from pathlib import Path
 import uuid
+
+# Asegurar que el directorio de este archivo esté en sys.path para que Vercel
+# pueda resolver 'database' (que está en la misma carpeta que index.py)
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+
 from database import init_db, get_all_documents, insert_document, get_cached_word, insert_cached_word, delete_cached_word, update_document, update_document_progress
 
 # Detectar si estamos corriendo en Vercel (producción) o en local

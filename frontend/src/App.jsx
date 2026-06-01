@@ -187,6 +187,8 @@ function App() {
   const isDraggingRef = useRef(false);
   const longPressTimer = useRef(null);
   const isLongPress = useRef(false);
+  const touchStartY = useRef(null); // Track initial touch Y to detect scroll vs select
+  const touchScrollAborted = useRef(false); // True when touch was identified as a scroll
 
   // --- DRAG SELECTION AND TRACKPAD-SAFE LONG-PRESS REFS ---
   const [tempDraggedWords, setTempDraggedWords] = useState([]);
@@ -1433,22 +1435,36 @@ function App() {
   useEffect(() => {
     const handleGlobalMove = (e) => {
       if (!isSelectingRange.current) return;
-      
-      // Prevent default page scroll and text selection overlay while dragging!
+
+      const clientX = e.type === 'touchmove' ? e.touches[0].clientX : e.clientX;
+      const clientY = e.type === 'touchmove' ? e.touches[0].clientY : e.clientY;
+
+      const startCoords = dragStartCoords.current;
+      if (!startCoords) return;
+
+      const dx = Math.abs(clientX - startCoords.x);
+      const dy = Math.abs(clientY - startCoords.y);
+      const distance = Math.sqrt(dx * dx + dy * dy);
+
+      // On touch: if vertical movement dominates (scroll gesture), abort selection entirely
+      // and let the browser handle native scrolling
+      if (e.type === 'touchmove' && dy > 8 && dy > dx * 1.2) {
+        if (longPressTimer.current) {
+          clearTimeout(longPressTimer.current);
+          longPressTimer.current = null;
+        }
+        touchScrollAborted.current = true;
+        isSelectingRange.current = false;
+        isDraggingSelection.current = false;
+        setTempDraggedWords([]);
+        return; // Let browser scroll natively
+      }
+
+      // It's a drag (horizontal or diagonal) — block scroll and treat as selection
       if (e.cancelable) {
         e.preventDefault();
       }
-      
-      const clientX = e.type === 'touchmove' ? e.touches[0].clientX : e.clientX;
-      const clientY = e.type === 'touchmove' ? e.touches[0].clientY : e.clientY;
-      
-      const startCoords = dragStartCoords.current;
-      if (!startCoords) return;
-      
-      const dx = clientX - startCoords.x;
-      const dy = clientY - startCoords.y;
-      const distance = Math.sqrt(dx * dx + dy * dy);
-      
+
       if (distance > 10) {
         if (longPressTimer.current) {
           clearTimeout(longPressTimer.current);
@@ -1462,6 +1478,17 @@ function App() {
     const handleGlobalEnd = (e) => {
       if (!isSelectingRange.current) return;
       
+      // If touch was aborted as a scroll, skip click/drag logic
+      if (e.type === 'touchend' && touchScrollAborted.current) {
+        touchScrollAborted.current = false;
+        isSelectingRange.current = false;
+        isDraggingSelection.current = false;
+        isLongPress.current = false;
+        activeSingleWord.current = null;
+        lastProcessedIdx.current = null;
+        return;
+      }
+
       if (longPressTimer.current) {
         clearTimeout(longPressTimer.current);
         longPressTimer.current = null;
@@ -1660,6 +1687,10 @@ function App() {
                                         const clientX = e.type === 'touchstart' ? e.touches[0].clientX : e.clientX;
                                         const clientY = e.type === 'touchstart' ? e.touches[0].clientY : e.clientY;
                                         
+                                        // Reset scroll-abort flag on every new touch
+                                        touchScrollAborted.current = false;
+                                        touchStartY.current = clientY;
+
                                         dragStartCoords.current = { x: clientX, y: clientY };
                                         isSelectingRange.current = true;
                                         isDraggingSelection.current = false;

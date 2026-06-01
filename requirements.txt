@@ -4,3 +4,4 @@ openai
 pymupdf
 google-genai
 requests
+python-dotenv

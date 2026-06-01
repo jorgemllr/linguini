@@ -2,11 +2,17 @@ import os
 import json
 import requests
 from pathlib import Path
-from dotenv import load_dotenv
 
 # --- CONFIGURACIÓN DE SUPABASE ---
-env_path = Path(__file__).resolve().parent.parent / 'frontend' / '.env'
-load_dotenv(dotenv_path=env_path)
+# En Vercel las variables ya están inyectadas por la plataforma
+_is_vercel = os.environ.get("VERCEL") == "1"
+if not _is_vercel:
+    try:
+        from dotenv import load_dotenv
+        env_path = Path(__file__).resolve().parent.parent / 'frontend' / '.env'
+        load_dotenv(dotenv_path=env_path)
+    except ImportError:
+        pass  # python-dotenv no disponible localmente, ignorar
 
 SUPABASE_URL = os.getenv("VITE_SUPABASE_URL")
 SUPABASE_KEY = os.getenv("VITE_SUPABASE_ANON_KEY")

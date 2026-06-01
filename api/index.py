@@ -1,36 +1,48 @@
 from flask import Flask, request, jsonify, send_from_directory
 from flask_cors import CORS
 import os
-from dotenv import load_dotenv
 from pathlib import Path
 import uuid
 from database import init_db, get_all_documents, insert_document, get_cached_word, insert_cached_word, delete_cached_word, update_document, update_document_progress
 
-# --- CONFIGURACIÓN DE RUTAS LOCALES (OBSIDIAN) ---
-OBSIDIAN_VAULT_DIR = Path("/Users/book/Documents/Zentralnervensystem")
-BOOKS_DIR = OBSIDIAN_VAULT_DIR / "Books"
-AUDIOBOOKS_DIR = OBSIDIAN_VAULT_DIR / "Audiobooks"
-
-# Nos aseguramos de que existan
-os.makedirs(BOOKS_DIR, exist_ok=True)
-os.makedirs(AUDIOBOOKS_DIR, exist_ok=True)
+# Detectar si estamos corriendo en Vercel (producción) o en local
+IS_VERCEL = os.environ.get("VERCEL") == "1"
 
 # ==========================================
 # CONFIGURACIÓN PARA LOCAL (Cargar .env)
+# En Vercel las variables ya están inyectadas por la plataforma
 # ==========================================
-env_path = Path(__file__).resolve().parent.parent / 'frontend' / '.env'
-load_dotenv(dotenv_path=env_path)
+if not IS_VERCEL:
+    try:
+        from dotenv import load_dotenv
+        env_path = Path(__file__).resolve().parent.parent / 'frontend' / '.env'
+        load_dotenv(dotenv_path=env_path)
+        # Por si acaso, intentamos cargar también desde la raíz si falló lo anterior
+        if not os.getenv("OPENAI_API_KEY") and not os.getenv("GEMINI_API_KEY"):
+            load_dotenv()
+    except ImportError:
+        pass  # python-dotenv no disponible, ignorar
 
-# Por si acaso, intentamos cargar también desde la raíz si falló lo anterior
-if not os.getenv("OPENAI_API_KEY") and not os.getenv("GEMINI_API_KEY"):
-    load_dotenv()
+# --- CONFIGURACIÓN DE RUTAS LOCALES (OBSIDIAN) ---
+# Solo se usan en desarrollo local; en Vercel no hay sistema de archivos local
+if not IS_VERCEL:
+    OBSIDIAN_VAULT_DIR = Path("/Users/book/Documents/Zentralnervensystem")
+    BOOKS_DIR = OBSIDIAN_VAULT_DIR / "Books"
+    AUDIOBOOKS_DIR = OBSIDIAN_VAULT_DIR / "Audiobooks"
+    os.makedirs(BOOKS_DIR, exist_ok=True)
+    os.makedirs(AUDIOBOOKS_DIR, exist_ok=True)
+else:
+    OBSIDIAN_VAULT_DIR = None
+    BOOKS_DIR = None
+    AUDIOBOOKS_DIR = None
 
 app = Flask(__name__)
 # Permitimos CORS desde cualquier origen para evitar problemas en Vercel
 CORS(app, resources={r"/api/*": {"origins": "*"}})
 
-# Inicializamos la base de datos local SQLite
-init_db()
+# Inicializamos la base de datos local SQLite (solo en local)
+if not IS_VERCEL:
+    init_db()
 
 _openai_client = None
 _gemini_client = None
@@ -177,6 +189,9 @@ def remove_word_cache():
 
 @app.route('/api/local-files', methods=['GET'])
 def list_local_files():
+    if IS_VERCEL:
+        # En Vercel no hay sistema de archivos local; devolver listas vacías
+        return jsonify({"unprocessed_pdfs": [], "audiobooks": []})
     try:
         import glob
         # 1. Obtener PDFs disponibles en Books/

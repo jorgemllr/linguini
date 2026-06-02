@@ -473,6 +473,100 @@ function App() {
     }
   };
 
+  const processPendingQueue = useCallback(async () => {
+    if (!navigator.onLine) return;
+    
+    // 1. Procesar actualizaciones de contenido de documentos pendientes
+    const pendingDocs = localStorage.getItem('pending-document-updates');
+    if (pendingDocs) {
+      try {
+        const docsMap = JSON.parse(pendingDocs);
+        const keys = Object.keys(docsMap);
+        for (const docId of keys) {
+          const content = docsMap[docId];
+          try {
+            const res = await fetch(getApiUrl(`/api/documents/${docId}`), {
+              method: 'PUT',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ content })
+            });
+            if (res.ok) {
+              delete docsMap[docId];
+            }
+          } catch (e) {
+            console.warn("Error re-intentando sincronización de documento:", docId, e);
+          }
+        }
+        if (Object.keys(docsMap).length === 0) {
+          localStorage.removeItem('pending-document-updates');
+        } else {
+          localStorage.setItem('pending-document-updates', JSON.stringify(docsMap));
+        }
+      } catch (e) {
+        console.error("Error analizando actualizaciones de documentos pendientes:", e);
+      }
+    }
+
+    // 2. Procesar traducciones offline pendientes
+    const pendingTrans = localStorage.getItem('pending-offline-translations');
+    if (pendingTrans) {
+      try {
+        let list = JSON.parse(pendingTrans);
+        if (!Array.isArray(list)) list = [];
+        const remaining = [];
+        
+        for (const item of list) {
+          try {
+            const { word, context, language, mode } = item;
+            const API_URL = getApiUrl('/api/analyze');
+            const res = await fetch(API_URL, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ word, context, language, mode })
+            });
+            if (!res.ok) throw new Error("API call failed");
+            const apiData = await res.json();
+            if (apiData.error) throw new Error(apiData.error);
+            
+            // Guardar en la caché SQLite local
+            await fetch(getApiUrl('/api/word_cache'), {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                word: word,
+                language: language,
+                translation_data: apiData
+              })
+            });
+            console.log("Procesada palabra offline con éxito:", word);
+          } catch (e) {
+            console.warn("Error re-intentando traducción offline de:", item.word, e);
+            remaining.push(item);
+          }
+        }
+        
+        if (remaining.length === 0) {
+          localStorage.removeItem('pending-offline-translations');
+        } else {
+          localStorage.setItem('pending-offline-translations', JSON.stringify(remaining));
+        }
+      } catch (e) {
+        console.error("Error analizando traducciones offline pendientes:", e);
+      }
+    }
+  }, []);
+
+  // Escuchar cambio a online y procesar cola al arrancar
+  useEffect(() => {
+    window.addEventListener('online', processPendingQueue);
+    if (navigator.onLine) {
+      processPendingQueue();
+    }
+    return () => {
+      window.removeEventListener('online', processPendingQueue);
+    };
+  }, [processPendingQueue]);
+
   const downloadAudio = async (url, e) => {
     e.stopPropagation();
     try {
@@ -1518,12 +1612,20 @@ function App() {
         setDocuments(prev => prev.map(d => d.id === currentDoc.id ? updatedDoc : d));
         
         if (currentDoc.id !== 'demo') {
-          // Guardar asíncronamente en SQLite a través del endpoint PUT
           fetch(getApiUrl(`/api/documents/${currentDoc.id}`), {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ content: newContent })
-          }).catch(err => console.warn("Error saving highlight to SQLite:", err));
+          }).catch(err => {
+            console.warn("Error saving highlight to SQLite, queuing update:", err);
+            const pendingDocs = localStorage.getItem('pending-document-updates');
+            let docsMap = {};
+            try {
+              if (pendingDocs) docsMap = JSON.parse(pendingDocs);
+            } catch (ex) {}
+            docsMap[currentDoc.id] = newContent;
+            localStorage.setItem('pending-document-updates', JSON.stringify(docsMap));
+          });
         }
       }
     }
@@ -1586,7 +1688,40 @@ function App() {
     } catch (e) {
       if (e.name === 'AbortError') return;
       if (isPopupClosedByUser.current) return;
-      setSelectedWord({ word: cleanWord, es: "Error", en: "Connection Error", grammar: "Revisa tu conexión", examples: [], associatedPhrase, fromCache: false });
+      
+      const isOffline = !navigator.onLine || e.message.includes("fetch") || e.message.includes("Failed to fetch");
+      if (isOffline) {
+        const pendingTrans = localStorage.getItem('pending-offline-translations');
+        let list = [];
+        try {
+          if (pendingTrans) list = JSON.parse(pendingTrans);
+          if (!Array.isArray(list)) list = [];
+        } catch (err) {}
+        
+        const exists = list.some(item => item.word === searchWord && item.language === (currentDoc?.language || 'auto'));
+        if (!exists) {
+          list.push({
+            word: searchWord,
+            context: surroundingSentence,
+            language: currentDoc?.language || 'auto',
+            mode: isDetailedMode ? 'detailed' : 'simple'
+          });
+          localStorage.setItem('pending-offline-translations', JSON.stringify(list));
+        }
+
+        setSelectedWord({
+          word: cleanWord,
+          es: "Sin conexión. Palabra guardada.",
+          en: "Offline. Word saved.",
+          grammar: "Se procesará cuando vuelva el internet",
+          examples: [],
+          associatedPhrase,
+          fromCache: false,
+          isOfflineSaved: true
+        });
+      } else {
+        setSelectedWord({ word: cleanWord, es: "Error", en: "Connection Error", grammar: "Revisa tu conexión", examples: [], associatedPhrase, fromCache: false });
+      }
     } finally {
       if (!isPopupClosedByUser.current) {
         setIsLoading(false);
@@ -1648,15 +1783,48 @@ function App() {
     } catch (e) {
       if (e.name === 'AbortError') return;
       if (isPopupClosedByUser.current) return;
-      setSelectedWord({ 
-        word: selectedWord.word, 
-        es: "Error", 
-        en: "Connection Error", 
-        grammar: "Revisa tu conexión", 
-        examples: [], 
-        associatedPhrase: selectedWord.associatedPhrase, 
-        fromCache: false 
-      });
+      
+      const isOffline = !navigator.onLine || e.message.includes("fetch") || e.message.includes("Failed to fetch");
+      if (isOffline) {
+        const pendingTrans = localStorage.getItem('pending-offline-translations');
+        let list = [];
+        try {
+          if (pendingTrans) list = JSON.parse(pendingTrans);
+          if (!Array.isArray(list)) list = [];
+        } catch (err) {}
+        
+        const exists = list.some(item => item.word === searchWord && item.language === (currentDoc?.language || 'auto'));
+        if (!exists) {
+          list.push({
+            word: searchWord,
+            context: context,
+            language: currentDoc?.language || 'auto',
+            mode: isDetailedMode ? 'detailed' : 'simple'
+          });
+          localStorage.setItem('pending-offline-translations', JSON.stringify(list));
+        }
+
+        setSelectedWord({
+          word: selectedWord.word,
+          es: "Sin conexión. Palabra guardada.",
+          en: "Offline. Word saved.",
+          grammar: "Se procesará cuando vuelva el internet",
+          examples: [],
+          associatedPhrase: selectedWord.associatedPhrase,
+          fromCache: false,
+          isOfflineSaved: true
+        });
+      } else {
+        setSelectedWord({ 
+          word: selectedWord.word, 
+          es: "Error", 
+          en: "Connection Error", 
+          grammar: "Revisa tu conexión", 
+          examples: [], 
+          associatedPhrase: selectedWord.associatedPhrase, 
+          fromCache: false 
+        });
+      }
     } finally {
       if (!isPopupClosedByUser.current) {
         setIsLoading(false);

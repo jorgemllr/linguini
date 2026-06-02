@@ -133,10 +133,12 @@ def update_document_route(doc_id):
     try:
         data = request.json
         content = data.get('content')
-        if not content:
-            return jsonify({"error": "Falta parámetro 'content'."}), 400
+        audio_url = data.get('audio_url')
+        
+        if content is None and audio_url is None:
+            return jsonify({"error": "Faltan parámetros 'content' o 'audio_url'."}), 400
             
-        result = update_document(doc_id, content)
+        result = update_document(doc_id, content=content, audio_url=audio_url)
         return jsonify(result)
     except Exception as e:
         print(f"❌ Error al actualizar documento: {e}")
@@ -562,6 +564,7 @@ def analyze_word():
     word = data.get('word')
     context_sentence = data.get('context')
     lang_code = data.get('language', 'auto')
+    mode = data.get('mode', 'detailed')
     
     # Map language code to human-readable name in Spanish
     lang_names = {
@@ -574,18 +577,30 @@ def analyze_word():
     }
     lang_name = lang_names.get(lang_code.lower() if lang_code else 'auto', 'alemán')
     
-    prompt = f"""
-    Actúa como un profesor de {lang_name} experto. El usuario no entiende "{word}".
-    Contexto: "...{context_sentence}..."
-    Analiza "{word}" EN ESE CONTEXTO y devuelve un objeto JSON estructurado con las siguientes claves:
-    1. "es": Traducción principal al español adaptada al contexto actual.
-    2. "en": Traducción principal al inglés adaptada al contexto actual.
-    3. "grammar": Explicación gramatical muy breve y concisa.
-    4. "alternatives": Un array de strings con otras traducciones o acepciones importantes de la palabra en otros contextos. Si la palabra es muy simple y no tiene otras acepciones significativas (como "puerta" o "mesa"), este array puede estar vacío o contener máximo una alternativa directa.
-    5. "examples": Array con 2 objetos de ejemplo {{"original": "...", "es_translation": "..."}}:
-       - El primer ejemplo debe usar la palabra con el mismo significado y en un contexto similar al actual.
-       - El segundo ejemplo: Si la palabra tiene otras acepciones importantes que cambian drásticamente su significado según el contexto, este segundo ejemplo DEBE ilustrar ese uso alternativo y contrastante. Si la palabra es simple o su significado casi no cambia, el segundo ejemplo simplemente debe ilustrar otro uso común del significado principal.
-    """
+    if mode == 'simple':
+        prompt = f"""
+        Actúa como un profesor de {lang_name} experto. El usuario no entiende "{word}".
+        Contexto: "...{context_sentence}..."
+        Traduce "{word}" EN ESE CONTEXTO y devuelve un objeto JSON estructurado con exactamente las siguientes claves:
+        1. "es": Traducción directa y concisa al español adaptada al contexto actual.
+        2. "en": Traducción directa y concisa al inglés adaptada al contexto actual.
+        3. "grammar": ""
+        4. "alternatives": []
+        5. "examples": []
+        """
+    else:
+        prompt = f"""
+        Actúa como un profesor de {lang_name} experto. El usuario no entiende "{word}".
+        Contexto: "...{context_sentence}..."
+        Analiza "{word}" EN ESE CONTEXTO y devuelve un objeto JSON estructurado con las siguientes claves:
+        1. "es": Traducción principal al español adaptada al contexto actual.
+        2. "en": Traducción principal al inglés adaptada al contexto actual.
+        3. "grammar": Explicación gramatical muy breve y concisa.
+        4. "alternatives": Un array de strings con otras traducciones o acepciones importantes de la palabra en otros contextos. Si la palabra es muy simple y no tiene otras acepciones significativas (como "puerta" o "mesa"), este array puede estar vacío o contener máximo una alternativa directa.
+        5. "examples": Array con 2 objetos de ejemplo {{"original": "...", "es_translation": "..."}}:
+           - El primer ejemplo debe usar la palabra con el mismo significado y en un contexto similar al actual.
+           - El segundo ejemplo: Si la palabra tiene otras acepciones importantes que cambian drásticamente su significado según el contexto, este segundo ejemplo DEBE ilustrar ese uso alternativo y contrastante. Si la palabra es simple o su significado casi no cambia, el segundo ejemplo simplemente debe ilustrar otro uso común del significado principal.
+        """
 
     openai_client = get_openai_client()
     # 1. Intentar usar OpenAI como cliente principal (más rápido y de menor consumo con gpt-4o-mini)

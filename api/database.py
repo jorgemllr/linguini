@@ -76,22 +76,26 @@ def insert_document(doc_id, title, content, language='auto', audio_url=None):
         print(f"❌ Excepción al insertar documento en Supabase: {e}")
     return payload
 
-def update_document(doc_id, content):
-    payload = {"content": content}
+def update_document(doc_id, content=None, audio_url=None):
+    payload = {}
+    if content is not None:
+        payload["content"] = content
+    if audio_url is not None:
+        payload["audio_url"] = audio_url
     
     if not SUPABASE_URL or not SUPABASE_KEY:
-        return {"id": doc_id, "content": content}
+        return {"id": doc_id, **payload}
         
     url = f"{SUPABASE_URL}/rest/v1/documents?id=eq.{doc_id}"
     try:
         r = requests.patch(url, json=payload, headers=get_headers())
         if r.status_code in [200, 204]:
-            return {"id": doc_id, "content": content}
+            return {"id": doc_id, **payload}
         else:
             print(f"❌ Error al actualizar documento en Supabase: {r.status_code} - {r.text}")
     except Exception as e:
         print(f"❌ Excepción al actualizar documento: {e}")
-    return {"id": doc_id, "content": content}
+    return {"id": doc_id, **payload}
 
 def update_document_progress(doc_id, current_page, scroll_position):
     payload = {

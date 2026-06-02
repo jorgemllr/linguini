@@ -35,7 +35,99 @@ const uploadToSupabaseStorage = async (file, storagePath, onProgress) => {
   });
 };
 
+// --- DATABASE OFFLINE STORAGE (INDEXEDDB) ---
+const IDB_NAME = 'LinguiniOfflineCache';
+const STORE_NAME = 'audiobooks';
+
+const getIDB = () => {
+  return new Promise((resolve, reject) => {
+    const request = indexedDB.open(IDB_NAME, 1);
+    request.onupgradeneeded = (e) => {
+      const db = e.target.result;
+      if (!db.objectStoreNames.contains(STORE_NAME)) {
+        db.createObjectStore(STORE_NAME);
+      }
+    };
+    request.onsuccess = (e) => resolve(e.target.result);
+    request.onerror = (e) => reject(e.target.error);
+  });
+};
+
+const getCachedAudio = async (url) => {
+  try {
+    const db = await getIDB();
+    return new Promise((resolve, reject) => {
+      const transaction = db.transaction(STORE_NAME, 'readonly');
+      const store = transaction.objectStore(STORE_NAME);
+      const request = store.get(url);
+      request.onsuccess = () => resolve(request.result);
+      request.onerror = () => reject(request.error);
+    });
+  } catch (err) {
+    console.warn("IndexedDB get error:", err);
+    return null;
+  }
+};
+
+const saveCachedAudio = async (url, blob) => {
+  try {
+    const db = await getIDB();
+    return new Promise((resolve, reject) => {
+      const transaction = db.transaction(STORE_NAME, 'readwrite');
+      const store = transaction.objectStore(STORE_NAME);
+      const request = store.put(blob, url);
+      request.onsuccess = () => resolve(true);
+      request.onerror = () => reject(request.error);
+    });
+  } catch (err) {
+    console.warn("IndexedDB save error:", err);
+    return false;
+  }
+};
+
+const deleteCachedAudio = async (url) => {
+  try {
+    const db = await getIDB();
+    return new Promise((resolve, reject) => {
+      const transaction = db.transaction(STORE_NAME, 'readwrite');
+      const store = transaction.objectStore(STORE_NAME);
+      const request = store.delete(url);
+      request.onsuccess = () => resolve(true);
+      request.onerror = () => reject(request.error);
+    });
+  } catch (err) {
+    console.warn("IndexedDB delete error:", err);
+    return false;
+  }
+};
+
 // --- ICONOS SVG ---
+const DownloadIcon = () => (
+  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, opacity: 0.7 }}>
+    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+    <polyline points="7 10 12 15 17 10"></polyline>
+    <line x1="12" y1="15" x2="12" y2="3"></line>
+  </svg>
+);
+const DeleteTrashIcon = () => (
+  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, opacity: 0.7 }}>
+    <polyline points="3 6 5 6 21 6"></polyline>
+    <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+    <line x1="10" y1="11" x2="10" y2="17"></line>
+    <line x1="14" y1="11" x2="14" y2="17"></line>
+  </svg>
+);
+const CheckIcon = () => (
+  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, color: '#30D158' }}>
+    <polyline points="20 6 9 17 4 12"></polyline>
+  </svg>
+);
+const SpinnerIcon = () => (
+  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" style={{ flexShrink: 0, color: '#0A84FF', animation: 'spin 1s linear infinite' }}>
+    <circle cx="12" cy="12" r="10" stroke="rgba(255,255,255,0.1)"></circle>
+    <path d="M4 12a8 8 0 0 1 8-8" stroke="currentColor"></path>
+  </svg>
+);
 const MenuIcon = () => <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>;
 const PlusIcon = () => <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>;
 const PlayIcon = () => <svg width="42" height="42" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>;
@@ -164,11 +256,48 @@ function App() {
 
   // --- ESTADOS ---
   const [documents, setDocuments] = useState(getInitialDocs);
+  const documentsRef = useRef(documents);
+  useEffect(() => {
+    documentsRef.current = documents;
+  }, [documents]);
   const [currentDoc, setCurrentDoc] = useState(initialDocVal);
   const [activeAudio, setActiveAudio] = useState(initialAudioVal);
   const [currentPage, setCurrentPage] = useState(1);
   const currentPageRef = useRef(1);
   const pageHeightsRef = useRef({});
+  const isRestoringScrollRef = useRef(true);
+  const isInitialDocsLoadedRef = useRef(false);
+
+  const restorePageScroll = useCallback((targetPage, targetScroll) => {
+    isRestoringScrollRef.current = true;
+    setCurrentPage(targetPage);
+    currentPageRef.current = targetPage;
+    
+    if (targetPage > 1) {
+      let attempts = 0;
+      const scrollTimer = setInterval(() => {
+        const targetEl = document.querySelector(`[data-page-idx="${targetPage - 1}"]`);
+        attempts++;
+        if (targetEl) {
+          targetEl.scrollIntoView({ behavior: 'instant', block: 'start' });
+          clearInterval(scrollTimer);
+          setTimeout(() => {
+            isRestoringScrollRef.current = false;
+            console.log("Restored reading progress to page:", targetPage);
+          }, 150);
+        } else if (attempts > 80) { // 4 seconds max polling
+          clearInterval(scrollTimer);
+          isRestoringScrollRef.current = false;
+        }
+      }, 50);
+    } else {
+      window.scrollTo(0, 0);
+      setTimeout(() => {
+        isRestoringScrollRef.current = false;
+      }, 150);
+    }
+  }, []);
+
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [showAddModal, setShowAddModal] = useState(false);
   
@@ -234,6 +363,72 @@ function App() {
     isDraggingRef.current = isDragging;
   }, [isDragging]);
 
+  // --- VOCABULARY MODE TOGGLE ---
+  const [isDetailedMode, setIsDetailedMode] = useState(() => localStorage.getItem('vocab-detailed-mode') !== 'false');
+  useEffect(() => {
+    localStorage.setItem('vocab-detailed-mode', isDetailedMode.toString());
+  }, [isDetailedMode]);
+
+  // --- OFFLINE CACHE STATE ---
+  const [cachedUrls, setCachedUrls] = useState({});
+  const [downloadProgress, setDownloadProgress] = useState({});
+  const [audioSrc, setAudioSrc] = useState('');
+
+  // --- REGISTRO DE INTERACCIONES DEL USUARIO (PREVIENE SOBREESCRITURAS ENTRE DISPOSITIVOS) ---
+  const isUserInteractedRef = useRef(false);
+  const lastUserInteractionTimeRef = useRef(0);
+  const abortControllerRef = useRef(null);
+
+  useEffect(() => {
+    const registerInteraction = () => {
+      isUserInteractedRef.current = true;
+      lastUserInteractionTimeRef.current = Date.now();
+    };
+    window.addEventListener('click', registerInteraction, { passive: true });
+    window.addEventListener('touchstart', registerInteraction, { passive: true });
+    window.addEventListener('scroll', registerInteraction, { passive: true });
+    window.addEventListener('keydown', registerInteraction, { passive: true });
+    return () => {
+      window.removeEventListener('click', registerInteraction);
+      window.removeEventListener('touchstart', registerInteraction);
+      window.removeEventListener('scroll', registerInteraction);
+      window.removeEventListener('keydown', registerInteraction);
+    };
+  }, []);
+
+
+  // Resolve active audio track source from IndexedDB cache if available
+  useEffect(() => {
+    let active = true;
+    let localUrl = null;
+    
+    const resolveAudioSrc = async () => {
+      if (!activeAudio) {
+        setAudioSrc('');
+        return;
+      }
+      
+      const cachedBlob = await getCachedAudio(activeAudio.url);
+      if (cachedBlob && active) {
+        localUrl = URL.createObjectURL(cachedBlob);
+        setAudioSrc(localUrl);
+        console.log("Playing audiobook from offline IndexedDB cache:", activeAudio.url);
+      } else if (active) {
+        setAudioSrc(activeAudio.url);
+        console.log("Playing audiobook online:", activeAudio.url);
+      }
+    };
+    
+    resolveAudioSrc();
+    
+    return () => {
+      active = false;
+      if (localUrl) {
+        URL.revokeObjectURL(localUrl);
+      }
+    };
+  }, [activeAudio]);
+
   useEffect(() => {
     currentPageRef.current = currentPage;
   }, [currentPage]);
@@ -244,6 +439,9 @@ function App() {
 
   const syncReadingProgress = async (docId, pageNum, scrollY) => {
     if (!docId || docId === 'demo') return;
+    if (!isUserInteractedRef.current) {
+      return;
+    }
     try {
       await fetch(getApiUrl(`/api/documents/${docId}/progress`), {
         method: 'PUT',
@@ -255,12 +453,81 @@ function App() {
     }
   };
 
+  const syncGlobalSettings = async (docId, activeAudioObj) => {
+    if (!docId || docId === 'demo' || docId === 'global_settings') return;
+    if (!isUserInteractedRef.current) {
+      return;
+    }
+    try {
+      const stateContent = JSON.stringify({
+        active_doc_id: docId,
+        active_audio: activeAudioObj
+      });
+      await fetch(getApiUrl(`/api/documents/global_settings`), {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ content: stateContent })
+      });
+    } catch (err) {
+      console.warn("⚠️ Error syncing global settings:", err);
+    }
+  };
+
+  const downloadAudio = async (url, e) => {
+    e.stopPropagation();
+    try {
+      setDownloadProgress(prev => ({ ...prev, [url]: 1 }));
+      const response = await fetch(url);
+      if (!response.ok) throw new Error("Download failed");
+      const reader = response.body.getReader();
+      const contentLength = +response.headers.get('Content-Length');
+      
+      let receivedLength = 0;
+      const chunks = [];
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        chunks.push(value);
+        receivedLength += value.length;
+        if (contentLength) {
+          const pct = Math.round((receivedLength / contentLength) * 100);
+          setDownloadProgress(prev => ({ ...prev, [url]: pct }));
+        }
+      }
+      const blob = new Blob(chunks, { type: 'audio/mpeg' });
+      await saveCachedAudio(url, blob);
+      setCachedUrls(prev => ({ ...prev, [url]: true }));
+      setDownloadProgress(prev => {
+        const copy = { ...prev };
+        delete copy[url];
+        return copy;
+      });
+      alert("🎉 Audio descargado correctamente para su uso sin datos móviles.");
+    } catch (err) {
+      alert("Error al descargar el audio: " + err.message);
+      setDownloadProgress(prev => {
+        const copy = { ...prev };
+        delete copy[url];
+        return copy;
+      });
+    }
+  };
+
+  const handleDeleteCache = async (url, e) => {
+    e.stopPropagation();
+    if (confirm("¿Seguro que quieres eliminar este audio descargado?")) {
+      await deleteCachedAudio(url);
+      setCachedUrls(prev => {
+        const copy = { ...prev };
+        delete copy[url];
+        return copy;
+      });
+    }
+  };
+
   // --- PERSISTENCIA DE LA POSICIÓN DE DESPLAZAMIENTO (SCROLL POSITION) ---
   useEffect(() => {
     if (!currentDoc || !currentDoc.id) return;
-    
-    // Restaurar posición de scroll anterior
-    let timer;
     
     // Primero intentamos los valores de la base de datos (SQLite)
     const savedScrollPage = currentDoc.current_page || 1;
@@ -277,30 +544,35 @@ function App() {
       if (localPage) targetPage = parseInt(localPage, 10) || 1;
     }
     
-    setCurrentPage(targetPage);
-    currentPageRef.current = targetPage;
-    
-    if (targetScroll > 0) {
-      // Un leve retardo para asegurar que el contenido memoizado terminó de renderizarse
-      timer = setTimeout(() => {
-        window.scrollTo({ top: targetScroll, behavior: 'instant' });
-      }, 180);
-    } else {
-      window.scrollTo(0, 0);
+    // Desactivar la restauración automática del scroll del navegador para evitar conflictos
+    if ('scrollRestoration' in window.history) {
+      window.history.scrollRestoration = 'manual';
     }
+    
+    restorePageScroll(targetPage, targetScroll);
 
     let lastScrollSaveTime = 0;
+    
+    const getActiveAudioTimeForDoc = () => {
+      if (activeAudio && currentDoc && activeAudio.title === currentDoc.title && audioRef.current) {
+        return audioRef.current.currentTime;
+      }
+      return currentDoc?.scroll_position || 0.0;
+    };
+
     const saveImmediateScroll = (forcePage, forceScroll) => {
+      if (isRestoringScrollRef.current) return;
       const pageVal = forcePage !== undefined ? forcePage : (currentPageRef.current || 1);
-      const scrollVal = forceScroll !== undefined ? forceScroll : window.scrollY;
+      const audioTimeVal = getActiveAudioTimeForDoc();
       
-      localStorage.setItem(`scroll-position-${currentDoc.id}`, scrollVal.toString());
+      localStorage.setItem(`scroll-position-${currentDoc.id}`, audioTimeVal.toString());
       localStorage.setItem(`current-page-${currentDoc.id}`, pageVal.toString());
       
-      syncReadingProgress(currentDoc.id, pageVal, scrollVal);
+      syncReadingProgress(currentDoc.id, pageVal, audioTimeVal);
     };
 
     const handleScroll = () => {
+      if (isRestoringScrollRef.current) return;
       const now = Date.now();
       
       // 1. Medir las alturas de las páginas que están renderizadas actualmente
@@ -349,7 +621,6 @@ function App() {
     window.addEventListener('visibilitychange', handleVisibilityChange);
 
     return () => {
-      if (timer) clearTimeout(timer);
       saveImmediateScroll(currentPageRef.current, window.scrollY); // Guardar posición del documento anterior al cambiar o salir
       window.removeEventListener('scroll', handleScroll);
       window.removeEventListener('beforeunload', () => saveImmediateScroll(currentPageRef.current, window.scrollY));
@@ -363,9 +634,31 @@ function App() {
       .filter(d => d.language === 'audio')
       .sort((a, b) => a.title.localeCompare(b.title, undefined, { numeric: true, sensitivity: 'base' }));
   }, [documents]);
-  const cloudBooks = useMemo(() => documents.filter(d => d.language !== 'audio'), [documents]);
+  const cloudBooks = useMemo(() => documents.filter(d => d.language !== 'audio' && d.language !== 'system'), [documents]);
 
   const [sidebarSections, setSidebarSections] = useState({ books: true, audios: true });
+
+  // Cargar caché local desde IndexedDB al arrancar
+  useEffect(() => {
+    const loadCachedUrls = async () => {
+      try {
+        const db = await getIDB();
+        const transaction = db.transaction(STORE_NAME, 'readonly');
+        const store = transaction.objectStore(STORE_NAME);
+        const request = store.getAllKeys();
+        request.onsuccess = () => {
+          const keys = request.result;
+          const cacheMap = {};
+          keys.forEach(k => { cacheMap[k] = true; });
+          setCachedUrls(cacheMap);
+          console.log("IndexedDB cached audiobooks loaded:", keys.length);
+        };
+      } catch (e) {
+        console.warn("Error loading cached URLs:", e);
+      }
+    };
+    loadCachedUrls();
+  }, []);
 
   // 1. Cargar documentos y archivos de Obsidian en startup
   useEffect(() => {
@@ -374,42 +667,117 @@ function App() {
             const res = await fetch(getApiUrl('/api/documents'));
             const data = await res.json();
             const cloudDocs = Array.isArray(data) ? data : [];
-            setDocuments(prev => {
-                const demoDoc = prev.find(d => d.id === 'demo') || {
-                  id: 'demo',
-                  title: 'Demo: Podcast Alemán',
-                  content: rawTranscript,
-                  audio_url: '/podcast.mp3',
-                  language: 'de',
-                  created_at: new Date().toISOString()
-                };
-                const merged = [...cloudDocs, demoDoc];
-                
-                // Restaurar el último documento abierto
-                const lastDocId = localStorage.getItem('last-opened-doc-id');
-                if (lastDocId) {
-                    const savedDoc = merged.find(d => d.id === lastDocId);
-                    if (savedDoc) {
-                        setCurrentDoc(prev => (prev && prev.id === savedDoc.id) ? prev : savedDoc);
-                        localStorage.setItem('last-opened-doc', JSON.stringify(savedDoc));
-                    } else {
-                        setCurrentDoc(prev => (prev && prev.id === merged[0].id) ? prev : merged[0]);
-                        localStorage.setItem('last-opened-doc', JSON.stringify(merged[0]));
-                        localStorage.setItem('last-opened-doc-id', merged[0].id);
-                    }
-                } else {
-                    setCurrentDoc(prev => (prev && prev.id === merged[0].id) ? prev : merged[0]);
-                    localStorage.setItem('last-opened-doc', JSON.stringify(merged[0]));
-                    localStorage.setItem('last-opened-doc-id', merged[0].id);
-                }
-                return merged;
+            
+            const demoDoc = {
+              id: 'demo',
+              title: 'Demo: Podcast Alemán',
+              content: rawTranscript,
+              audio_url: '/podcast.mp3',
+              language: 'de',
+              created_at: new Date().toISOString()
+            };
+            const merged = [...cloudDocs, demoDoc];
+            
+            // Handle global settings
+            let activeDocId = null;
+            let activeAudioState = null;
+            const globalSettingsDoc = cloudDocs.find(d => d.id === 'global_settings');
+            if (globalSettingsDoc && globalSettingsDoc.content) {
+              try {
+                const parsed = JSON.parse(globalSettingsDoc.content);
+                activeDocId = parsed.active_doc_id;
+                activeAudioState = parsed.active_audio;
+              } catch (e) {
+                console.warn("Failed to parse global settings:", e);
+              }
+            }
+            
+            // If no global settings doc was found, let's create it in database
+            if (!globalSettingsDoc) {
+              fetch(getApiUrl('/api/documents'), {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  id: 'global_settings',
+                  title: 'Global Settings',
+                  content: JSON.stringify({ active_doc_id: 'demo', active_audio: null }),
+                  language: 'system'
+                })
+              }).catch(err => console.warn("Error creating global_settings document:", err));
+            }
+            
+            // Sincronizar todos los progresos de la base de datos con el almacenamiento local local y global
+            cloudDocs.forEach(doc => {
+              if (doc.scroll_position > 0) {
+                localStorage.setItem(`audio-progress-${doc.title}`, doc.scroll_position.toString());
+              }
+              if (doc.current_page > 0) {
+                localStorage.setItem(`current-page-${doc.id}`, doc.current_page.toString());
+              }
             });
+
+            setDocuments(merged);
+            isInitialDocsLoadedRef.current = true;
+
+            // Restore active audio state
+            let resolvedAudio = activeAudioState;
+            if (!resolvedAudio) {
+              const lastAudio = localStorage.getItem('last-active-audio');
+              if (lastAudio) {
+                try {
+                  const parsed = JSON.parse(lastAudio);
+                  if (parsed && parsed.url) resolvedAudio = parsed;
+                } catch (e) {}
+              }
+            }
+            if (!resolvedAudio && demoDoc.audio_url) {
+              resolvedAudio = { url: demoDoc.audio_url, title: demoDoc.title };
+            }
+
+            if (resolvedAudio) {
+              setActiveAudio(resolvedAudio);
+              // Seek immediately if progress exists
+              const associatedDoc = merged.find(d => d.title === resolvedAudio.title || (d.audio_url && d.audio_url.includes(resolvedAudio.url)));
+              if (associatedDoc && associatedDoc.scroll_position > 0) {
+                setCurrentTime(associatedDoc.scroll_position);
+                if (audioRef.current && audioRef.current.readyState >= 1) {
+                  try {
+                    audioRef.current.currentTime = associatedDoc.scroll_position;
+                  } catch (e) {
+                    console.warn("Error al seeking inmediato:", e);
+                  }
+                }
+              }
+            }
+
+            // Restore active document
+            let resolvedDoc = null;
+            if (activeDocId) {
+              resolvedDoc = merged.find(d => d.id === activeDocId);
+            }
+            if (!resolvedDoc) {
+              const lastDocId = localStorage.getItem('last-opened-doc-id');
+              if (lastDocId) resolvedDoc = merged.find(d => d.id === lastDocId);
+            }
+            if (!resolvedDoc) {
+              resolvedDoc = merged[0] || demoDoc;
+            }
+
+            if (resolvedDoc) {
+              setCurrentDoc(resolvedDoc);
+              localStorage.setItem('last-opened-doc', JSON.stringify(resolvedDoc));
+              localStorage.setItem('last-opened-doc-id', resolvedDoc.id);
+              
+              const targetPage = resolvedDoc.current_page || 1;
+              const targetScroll = resolvedDoc.scroll_position || 0.0;
+              restorePageScroll(targetPage, targetScroll);
+            }
         } catch (err) {
             console.warn("⚠️ No se pudieron cargar los documentos locales:", err);
         }
     };
     fetchDocs();
-  }, []);
+  }, [restorePageScroll]);
 
   // 2. Guardar documento
   const handleSaveDocument = async () => {
@@ -604,7 +972,11 @@ function App() {
     } else {
       isInitRef.current = true;
     }
-  }, [currentDoc?.id]);
+
+    if (isInitialDocsLoadedRef.current && currentDoc.id !== 'global_settings') {
+      syncGlobalSettings(currentDoc.id, activeAudio);
+    }
+  }, [currentDoc?.id, currentDoc?.audio_url]);
 
   // Sincronizar velocidad de reproducción dinámicamente cuando cambie
   useEffect(() => {
@@ -632,6 +1004,9 @@ function App() {
   useEffect(() => {
     if (activeAudio) {
       localStorage.setItem('last-active-audio', JSON.stringify(activeAudio));
+      if (isInitialDocsLoadedRef.current && currentDoc && currentDoc.id !== 'global_settings') {
+        syncGlobalSettings(currentDoc.id, activeAudio);
+      }
     }
   }, [activeAudio]);
 
@@ -646,10 +1021,16 @@ function App() {
     audio.load();
 
     const saveImmediateAudioProgress = (timeToSave) => {
+      if (!isInitialDocsLoadedRef.current) return; // Evitar que valores obsoletos locales pisen la BD al iniciar
       if (activeAudio && activeAudio.title && timeToSave !== undefined) {
         // Prevent saving 0 or progress updates when the audio element has been reset (readyState < 1)
         if (audio && audio.readyState >= 1) {
           localStorage.setItem(`audio-progress-${activeAudio.title}`, timeToSave.toString());
+          const associatedDoc = documentsRef.current.find(d => d.title === activeAudio.title || (d.audio_url && d.audio_url.includes(activeAudio.url)));
+          if (associatedDoc) {
+            const pageVal = (currentDoc && currentDoc.id === associatedDoc.id) ? (currentPageRef.current || 1) : (associatedDoc.current_page || 1);
+            syncReadingProgress(associatedDoc.id, pageVal, timeToSave);
+          }
         }
       }
     };
@@ -657,11 +1038,16 @@ function App() {
     // Cargar progreso del activeAudio y setearlo en el estado síncronamente
     let initialSeekTime = 0;
     if (activeAudio && activeAudio.title) {
-      const savedTime = localStorage.getItem(`audio-progress-${activeAudio.title}`);
-      if (savedTime) {
-        const parsedTime = parseFloat(savedTime);
-        if (!isNaN(parsedTime)) {
-          initialSeekTime = parsedTime;
+      const associatedDoc = documentsRef.current.find(d => d.title === activeAudio.title || (d.audio_url && d.audio_url.includes(activeAudio.url)));
+      if (associatedDoc && associatedDoc.scroll_position > 0) {
+        initialSeekTime = associatedDoc.scroll_position;
+      } else {
+        const savedTime = localStorage.getItem(`audio-progress-${activeAudio.title}`);
+        if (savedTime) {
+          const parsedTime = parseFloat(savedTime);
+          if (!isNaN(parsedTime)) {
+            initialSeekTime = parsedTime;
+          }
         }
       }
     }
@@ -670,12 +1056,31 @@ function App() {
     let hasSeeked = false;
     const restoreProgress = () => {
       if (hasSeeked) return;
-      if (initialSeekTime > 0) {
+      
+      // Calcular el tiempo de seek de forma completamente dinámica para evitar closures obsoletos de React
+      let seekTime = 0;
+      if (activeAudio && activeAudio.title) {
+        const associatedDoc = documentsRef.current.find(d => d.title === activeAudio.title || (d.audio_url && d.audio_url.includes(activeAudio.url)));
+        if (associatedDoc && associatedDoc.scroll_position > 0) {
+          seekTime = associatedDoc.scroll_position;
+        } else {
+          const savedTime = localStorage.getItem(`audio-progress-${activeAudio.title}`);
+          if (savedTime) {
+            const parsedTime = parseFloat(savedTime);
+            if (!isNaN(parsedTime)) {
+              seekTime = parsedTime;
+            }
+          }
+        }
+      }
+
+      if (seekTime > 0) {
         try {
-          audio.currentTime = initialSeekTime;
+          audio.currentTime = seekTime;
           audio.playbackRate = playbackRate;
           hasSeeked = true;
-          console.log("Restored playback position to:", initialSeekTime);
+          setCurrentTime(seekTime);
+          console.log("Restored playback position dynamically to:", seekTime);
         } catch (err) {
           console.warn("Failed to seek audio:", err);
         }
@@ -687,7 +1092,8 @@ function App() {
       restoreProgress();
     }
 
-    let lastSaveTime = 0;
+    // Inicializar con la hora actual en lugar de 0 para bloquear el primer tick inmediato de sobreescritura
+    let lastSaveTime = Date.now();
     const updateTime = () => {
       if (isDraggingRef.current) return;
       const time = audio.currentTime;
@@ -751,7 +1157,8 @@ function App() {
     if (audio.paused) {
       // Fallback: Si el currentTime está en 0, pero hay progreso guardado, restaurarlo justo antes de reproducir
       if (audio.currentTime === 0 && activeAudio && activeAudio.title) {
-        const savedTime = localStorage.getItem(`audio-progress-${activeAudio.title}`);
+        const associatedDoc = documentsRef.current.find(d => d.title === activeAudio.title || (d.audio_url && d.audio_url.includes(activeAudio.url)));
+        const savedTime = associatedDoc && associatedDoc.scroll_position > 0 ? associatedDoc.scroll_position.toString() : localStorage.getItem(`audio-progress-${activeAudio.title}`);
         if (savedTime) {
           const parsedTime = parseFloat(savedTime);
           if (!isNaN(parsedTime)) {
@@ -768,7 +1175,13 @@ function App() {
       audio.pause();
       setIsPlaying(false);
       if (activeAudio && activeAudio.title && audio.readyState >= 1) {
-        localStorage.setItem(`audio-progress-${activeAudio.title}`, audio.currentTime.toString());
+        const timeToSave = audio.currentTime;
+        localStorage.setItem(`audio-progress-${activeAudio.title}`, timeToSave.toString());
+        const associatedDoc = documentsRef.current.find(d => d.title === activeAudio.title || (d.audio_url && d.audio_url.includes(activeAudio.url)));
+        if (associatedDoc) {
+          const pageVal = (currentDoc && currentDoc.id === associatedDoc.id) ? (currentPageRef.current || 1) : (associatedDoc.current_page || 1);
+          syncReadingProgress(associatedDoc.id, pageVal, timeToSave);
+        }
       }
     }
   };
@@ -780,7 +1193,8 @@ function App() {
 
     // Restaurar progreso síncronamente en cuanto el elemento cargue los metadatos
     if (activeAudio && activeAudio.title) {
-      const savedTime = localStorage.getItem(`audio-progress-${activeAudio.title}`);
+      const associatedDoc = documentsRef.current.find(d => d.title === activeAudio.title || (d.audio_url && d.audio_url.includes(activeAudio.url)));
+      const savedTime = associatedDoc && associatedDoc.scroll_position > 0 ? associatedDoc.scroll_position.toString() : localStorage.getItem(`audio-progress-${activeAudio.title}`);
       if (savedTime) {
         const parsedTime = parseFloat(savedTime);
         if (!isNaN(parsedTime)) {
@@ -803,6 +1217,11 @@ function App() {
     setCurrentTime(newTime);
     if (activeAudio && activeAudio.title) {
       localStorage.setItem(`audio-progress-${activeAudio.title}`, newTime.toString());
+      const associatedDoc = documentsRef.current.find(d => d.title === activeAudio.title || (d.audio_url && d.audio_url.includes(activeAudio.url)));
+      if (associatedDoc) {
+        const pageVal = (currentDoc && currentDoc.id === associatedDoc.id) ? (currentPageRef.current || 1) : (associatedDoc.current_page || 1);
+        syncReadingProgress(associatedDoc.id, pageVal, newTime);
+      }
     }
   };
   
@@ -827,6 +1246,11 @@ function App() {
     // Guardar progreso en localStorage de forma inmediata al terminar de arrastrar
     if (activeAudio && activeAudio.title) {
       localStorage.setItem(`audio-progress-${activeAudio.title}`, t.toString());
+      const associatedDoc = documentsRef.current.find(d => d.title === activeAudio.title || (d.audio_url && d.audio_url.includes(activeAudio.url)));
+      if (associatedDoc) {
+        const pageVal = (currentDoc && currentDoc.id === associatedDoc.id) ? (currentPageRef.current || 1) : (associatedDoc.current_page || 1);
+        syncReadingProgress(associatedDoc.id, pageVal, t);
+      }
     }
   };
 
@@ -906,6 +1330,115 @@ function App() {
 
       window.speechSynthesis.speak(utterance);
   };
+
+  const handleCloseModal = useCallback(async () => {
+    isPopupClosedByUser.current = true;
+    
+    // Abort active fetch request if any
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
+    
+    if (isLoading && selectedWord) {
+      const clickedWord = selectedWord.word;
+      const associatedPhrase = selectedWord.associatedPhrase;
+      
+      if (associatedPhrase) {
+        // Unhighlight the phrase in the DOM immediately
+        const pKey = associatedPhrase.pKey;
+        const startIdx = associatedPhrase.startIdx;
+        const endIdx = associatedPhrase.endIdx;
+        const paragraphSpans = document.querySelectorAll(`[data-paragraph-key="${pKey}"][data-word-flat-idx]`);
+        paragraphSpans.forEach(span => {
+          const idx = parseInt(span.getAttribute('data-word-flat-idx'), 10);
+          const spacer = document.querySelector(`[data-paragraph-key="${pKey}"][data-space-after-idx="${idx}"]`);
+          if (idx >= startIdx && idx <= endIdx) {
+            span.removeAttribute('data-is-highlighted');
+            span.style.backgroundColor = 'transparent';
+            span.style.color = 'inherit';
+            span.style.borderBottom = 'none';
+            span.style.fontWeight = '400';
+            span.style.padding = '0';
+            if (spacer) {
+              spacer.removeAttribute('data-is-highlighted');
+              spacer.style.backgroundColor = 'transparent';
+              spacer.style.borderBottom = 'none';
+            }
+          }
+        });
+        
+        // Remove from document content
+        if (currentDoc) {
+          const parts = currentDoc.content.split('\n---\n');
+          const textContent = parts[0] || '';
+          const highlightedWordsPart = parts[1] || '';
+          const highlightedWords = highlightedWordsPart 
+            ? highlightedWordsPart.split(',').map(w => w.trim().toLowerCase()) 
+            : [];
+          
+          const phraseTag = `phrase:${pKey}:${startIdx}-${endIdx}:${associatedPhrase.phraseText.toLowerCase()}`;
+          const newHighlightedWords = highlightedWords.filter(w => w !== phraseTag);
+          
+          const newHighlightedPart = newHighlightedWords.join(', ');
+          const newContent = `${textContent}\n---\n${newHighlightedPart}`;
+          const updatedDoc = { ...currentDoc, content: newContent };
+          
+          setCurrentDoc(updatedDoc);
+          setDocuments(prev => prev.map(d => d.id === currentDoc.id ? updatedDoc : d));
+          
+          if (currentDoc.id !== 'demo') {
+            fetch(getApiUrl(`/api/documents/${currentDoc.id}`), {
+              method: 'PUT',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ content: newContent })
+            }).catch(err => console.warn("Error updating document highlights on cancel phrase:", err));
+          }
+        }
+      } else if (clickedWord) {
+        // Unhighlight the word in the DOM immediately
+        const searchWord = clickedWord.toLowerCase();
+        const elements = document.querySelectorAll(`[data-word-clean="${searchWord}"]`);
+        elements.forEach(el => {
+          el.style.backgroundColor = 'transparent';
+          el.style.color = 'inherit';
+          el.style.borderBottom = 'none';
+          el.style.fontWeight = '400';
+          el.style.padding = '0';
+          el.removeAttribute('data-is-highlighted');
+        });
+        
+        // Remove from document content
+        if (currentDoc) {
+          const parts = currentDoc.content.split('\n---\n');
+          const textContent = parts[0] || '';
+          const highlightedWordsPart = parts[1] || '';
+          const highlightedWords = highlightedWordsPart 
+            ? highlightedWordsPart.split(',').map(w => w.trim().toLowerCase()) 
+            : [];
+          
+          const newHighlightedWords = highlightedWords.filter(w => w !== searchWord);
+          
+          const newHighlightedPart = newHighlightedWords.join(', ');
+          const newContent = `${textContent}\n---\n${newHighlightedPart}`;
+          const updatedDoc = { ...currentDoc, content: newContent };
+          
+          setCurrentDoc(updatedDoc);
+          setDocuments(prev => prev.map(d => d.id === currentDoc.id ? updatedDoc : d));
+          
+          if (currentDoc.id !== 'demo') {
+            fetch(getApiUrl(`/api/documents/${currentDoc.id}`), {
+              method: 'PUT',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ content: newContent })
+            }).catch(err => console.warn("Error updating document highlights on cancel word:", err));
+          }
+        }
+      }
+    }
+    
+    setSelectedWord(null);
+    setIsLoading(false);
+  }, [isLoading, selectedWord, currentDoc]);
 
   // 5. LÓGICA DE PALABRA
   const handleWordClick = useCallback(async (clickedWord, surroundingSentence) => {
@@ -1013,15 +1546,22 @@ function App() {
     } catch (err) { console.error("Error caché:", err); }
 
     // API
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
+    abortControllerRef.current = new AbortController();
+
     const API_URL = getApiUrl('/api/analyze');
     try {
       const res = await fetch(API_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        signal: abortControllerRef.current.signal,
         body: JSON.stringify({ 
           word: searchWord, 
           context: surroundingSentence,
-          language: currentDoc?.language || 'auto'
+          language: currentDoc?.language || 'auto',
+          mode: isDetailedMode ? 'detailed' : 'simple'
         })
       });
       const apiData = await res.json();
@@ -1044,6 +1584,7 @@ function App() {
         console.warn("⚠️ No se pudo guardar en la caché de la base de datos local:", dbErr);
       }
     } catch (e) {
+      if (e.name === 'AbortError') return;
       if (isPopupClosedByUser.current) return;
       setSelectedWord({ word: cleanWord, es: "Error", en: "Connection Error", grammar: "Revisa tu conexión", examples: [], associatedPhrase, fromCache: false });
     } finally {
@@ -1051,13 +1592,18 @@ function App() {
         setIsLoading(false);
       }
     }
-  }, [currentDoc]);
+  }, [currentDoc, isDetailedMode]);
 
   const handleRefreshTranslation = useCallback(async () => {
     if (!selectedWord) return;
     setIsLoading(true);
     isPopupClosedByUser.current = false;
     
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
+    abortControllerRef.current = new AbortController();
+
     const searchWord = selectedWord.word.toLowerCase();
     const context = dragParagraphText.current || "";
     
@@ -1066,10 +1612,12 @@ function App() {
       const res = await fetch(API_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        signal: abortControllerRef.current.signal,
         body: JSON.stringify({ 
           word: searchWord, 
           context: context,
-          language: currentDoc?.language || 'auto'
+          language: currentDoc?.language || 'auto',
+          mode: isDetailedMode ? 'detailed' : 'simple'
         })
       });
       const apiData = await res.json();
@@ -1098,6 +1646,7 @@ function App() {
         console.warn("⚠️ No se pudo guardar en la caché de la base de datos local:", dbErr);
       }
     } catch (e) {
+      if (e.name === 'AbortError') return;
       if (isPopupClosedByUser.current) return;
       setSelectedWord({ 
         word: selectedWord.word, 
@@ -1113,7 +1662,7 @@ function App() {
         setIsLoading(false);
       }
     }
-  }, [selectedWord, currentDoc]);
+  }, [selectedWord, currentDoc, isDetailedMode]);
 
   const handleWordLongPress = useCallback(async (clickedWord, surroundingSentence) => {
     const cleanWord = clickedWord
@@ -2068,6 +2617,19 @@ function App() {
                                        onClick={() => {
                                            setActiveAudio({ url: doc.audio_url, title: doc.title });
                                            setSidebarOpen(false);
+                                           
+                                           // Vincular dinámicamente esta pista de audio al libro de texto activo en la base de datos
+                                           if (currentDoc && currentDoc.id !== 'demo' && currentDoc.language !== 'audio') {
+                                               const updatedDoc = { ...currentDoc, audio_url: doc.audio_url };
+                                               setCurrentDoc(updatedDoc);
+                                               setDocuments(prev => prev.map(d => d.id === currentDoc.id ? updatedDoc : d));
+                                               
+                                               fetch(getApiUrl(`/api/documents/${currentDoc.id}`), {
+                                                   method: 'PUT',
+                                                   headers: { 'Content-Type': 'application/json' },
+                                                   body: JSON.stringify({ audio_url: doc.audio_url })
+                                               }).catch(err => console.warn("Error al vincular pista de audio con el libro:", err));
+                                           }
                                        }}
                                        style={{ 
                                            display: 'flex', alignItems: 'center', gap: '10px',
@@ -2080,12 +2642,48 @@ function App() {
                                        onMouseOut={(e) => { if(!isActive) e.currentTarget.style.backgroundColor = 'transparent'; }}
                                   >
                                       <AudioIcon />
-                                      <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>
-                                          {doc.title}
-                                      </span>
-                                      {isActive && (
-                                          <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#30D158', display: 'inline-block' }} />
-                                      )}
+                                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flex: 1, minWidth: 0 }}>
+                                          <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>
+                                              {doc.title}
+                                          </span>
+                                          
+                                          {isActive && (
+                                              <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#30D158', display: 'inline-block', flexShrink: 0 }} />
+                                          )}
+
+                                          {/* OFFLINE STORAGE CACHE CONTROLLER */}
+                                          {downloadProgress[doc.audio_url] !== undefined ? (
+                                              <div style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.7rem', color: '#0A84FF', fontWeight: '700' }}>
+                                                  <span>{downloadProgress[doc.audio_url]}%</span>
+                                                  <SpinnerIcon />
+                                              </div>
+                                          ) : cachedUrls[doc.audio_url] ? (
+                                              <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                                  <CheckIcon />
+                                                  <button 
+                                                      onClick={(e) => handleDeleteCache(doc.audio_url, e)} 
+                                                      className="icon-btn" 
+                                                      style={{ padding: '4px', opacity: 0.4 }}
+                                                      title="Eliminar descarga local"
+                                                      onMouseOver={(e) => e.currentTarget.style.opacity = 1}
+                                                      onMouseOut={(e) => e.currentTarget.style.opacity = 0.4}
+                                                  >
+                                                      <DeleteTrashIcon />
+                                                  </button>
+                                              </div>
+                                          ) : (
+                                              <button 
+                                                  onClick={(e) => downloadAudio(doc.audio_url, e)} 
+                                                  className="icon-btn" 
+                                                  style={{ padding: '4px', opacity: 0.4 }}
+                                                  title="Descargar para escuchar sin conexión"
+                                                  onMouseOver={(e) => e.currentTarget.style.opacity = 1}
+                                                  onMouseOut={(e) => e.currentTarget.style.opacity = 0.4}
+                                              >
+                                                  <DownloadIcon />
+                                              </button>
+                                          )}
+                                      </div>
                                   </div>
                               );
                           })}
@@ -2099,6 +2697,38 @@ function App() {
                   )}
               </div>
               
+          </div>
+
+          <div style={{ height: '1px', background: theme.border, margin: '15px 0 10px 0' }} />
+          
+          <div style={{ 
+              display: 'flex', justifyContent: 'space-between', alignItems: 'center', 
+              padding: '12px 14px', borderRadius: '14px', background: 'rgba(255,255,255,0.02)',
+              border: '1px solid rgba(255,255,255,0.04)'
+          }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', textAlign: 'left' }}>
+                  <span style={{ fontSize: '0.8rem', fontWeight: '600', color: '#fff' }}>Modo Detallado</span>
+                  <span style={{ fontSize: '0.65rem', color: theme.textSecondary }}>Explicaciones & Ejemplos</span>
+              </div>
+              <label className="switch" style={{ position: 'relative', display: 'inline-block', width: '42px', height: '24px', cursor: 'pointer' }}>
+                  <input 
+                      type="checkbox" 
+                      checked={isDetailedMode}
+                      onChange={(e) => setIsDetailedMode(e.target.checked)}
+                      style={{ opacity: 0, width: 0, height: 0 }}
+                  />
+                  <span className="slider" style={{
+                      position: 'absolute', inset: 0,
+                      backgroundColor: isDetailedMode ? '#30D158' : 'rgba(255,255,255,0.15)',
+                      transition: '0.2s', borderRadius: '34px'
+                  }}>
+                      <span style={{
+                          position: 'absolute', height: '18px', width: '18px',
+                          left: isDetailedMode ? '20px' : '4px', bottom: '3px',
+                          backgroundColor: 'white', transition: '0.2s', borderRadius: '50%'
+                      }} />
+                  </span>
+              </label>
           </div>
       </div>
       {sidebarOpen && <div onClick={() => setSidebarOpen(false)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 2999, backdropFilter: 'blur(2px)' }} />}
@@ -2206,7 +2836,7 @@ function App() {
                     <button onClick={() => skipTime(10)} className="icon-btn-player"><ForwardIcon/></button>
                 </div>
             </div>
-            <audio ref={audioRef} src={activeAudio.url} onLoadedMetadata={handleAudioMetadataLoaded} />
+            <audio ref={audioRef} src={audioSrc} onLoadedMetadata={handleAudioMetadataLoaded} />
         </div>
       )}
 
@@ -2397,8 +3027,7 @@ function App() {
           <>
             <div onClick={() => {
               if (Date.now() - modalOpenedTime.current > 400) {
-                isPopupClosedByUser.current = true;
-                setSelectedWord(null);
+                handleCloseModal();
               }
             }} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.1)', zIndex: 1100 }} />
             <div style={{ 
@@ -2419,12 +3048,56 @@ function App() {
                                 <SpeakerIcon />
                             </button>
                         </div>
-                        {isLoading ? <span style={{ color: theme.accent, fontSize:'0.9rem' }}>Analizando...</span> : <span style={{ color: theme.textSecondary, fontSize:'0.9rem' }}>{selectedWord.grammar || "Vocabulario"}</span>}
+                        {isLoading ? (
+                            <span style={{ color: theme.accent, fontSize:'0.9rem' }}>Analizando...</span>
+                        ) : (
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                <span style={{ color: theme.textSecondary, fontSize:'0.9rem' }}>{(isDetailedMode && selectedWord.grammar) || "Vocabulario"}</span>
+                                {isDetailedMode && selectedWord.grammar && <span style={{ color: 'rgba(255,255,255,0.15)', fontSize: '0.9rem' }}>•</span>}
+                                <span style={{ color: isDetailedMode ? '#30D158' : theme.textSecondary, fontSize: '0.8rem', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                                    {isDetailedMode ? "Detallado" : "Simple"}
+                                </span>
+                            </div>
+                        )}
                     </div>
-                    <button onClick={() => { isPopupClosedByUser.current = true; setSelectedWord(null); }} className="icon-btn" style={{ margin: '-5px -5px 0 0' }}><CloseIconCircle /></button>
+                    <button onClick={handleCloseModal} className="icon-btn" style={{ margin: '-5px -5px 0 0' }}><CloseIconCircle /></button>
                 </div>
                 
                 <div style={{ opacity: isLoading ? 0.5 : 1, transition: 'opacity 0.3s' }}>
+                    {/* TOGGLE MODO DE VOCABULARIO */}
+                    <div style={{ 
+                        display: 'flex', justifyContent: 'space-between', alignItems: 'center', 
+                        background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.05)',
+                        borderRadius: '16px', padding: '12px 18px', marginBottom: '20px'
+                    }}>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', textAlign: 'left' }}>
+                            <span style={{ fontSize: '0.85rem', fontWeight: '600', color: '#fff' }}>Explicaciones detalladas</span>
+                            <span style={{ fontSize: '0.7rem', color: theme.textSecondary }}>Incluye gramática, acepciones y ejemplos de uso</span>
+                        </div>
+                        <label className="switch" style={{ position: 'relative', display: 'inline-block', width: '46px', height: '26px', cursor: 'pointer' }}>
+                            <input 
+                                type="checkbox" 
+                                checked={isDetailedMode}
+                                onChange={(e) => {
+                                    const nextVal = e.target.checked;
+                                    setIsDetailedMode(nextVal);
+                                }}
+                                style={{ opacity: 0, width: 0, height: 0 }}
+                            />
+                            <span className="slider" style={{
+                                position: 'absolute', inset: 0,
+                                backgroundColor: isDetailedMode ? '#30D158' : 'rgba(255,255,255,0.15)',
+                                transition: '0.2s', borderRadius: '34px'
+                            }}>
+                                <span style={{
+                                    position: 'absolute', height: '20px', width: '20px',
+                                    left: isDetailedMode ? '22px' : '4px', bottom: '3px',
+                                    backgroundColor: 'white', transition: '0.2s', borderRadius: '50%'
+                                }} />
+                            </span>
+                        </label>
+                    </div>
+
                     {selectedWord.associatedPhrase && (
                         <div style={{ 
                             background: 'rgba(10, 132, 255, 0.08)',
@@ -2469,7 +3142,7 @@ function App() {
                             </button>
                         </div>
                     )}
-                    {selectedWord.fromCache && (
+                    {(selectedWord.fromCache || (!selectedWord.fromCache && !isDetailedMode)) && (
                         <div style={{ 
                             background: 'rgba(255, 159, 10, 0.05)',
                             border: '1px dashed rgba(255, 159, 10, 0.25)',
@@ -2485,11 +3158,13 @@ function App() {
                             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>
                                 <span style={{ fontSize: '1rem' }}>⚠️</span>
                                 <span style={{ fontSize: '0.75rem', fontWeight: '700', letterSpacing: '0.5px', color: '#FF9F0A', textTransform: 'uppercase' }}>
-                                    Traducción Guardada
+                                    {selectedWord.fromCache ? "Traducción Guardada" : "Análisis Simple"}
                                 </span>
                             </div>
-                            <p style={{ margin: '0 0 4px 0', fontSize: '0.85rem', color: theme.textSecondary, lineHeight: '1.4' }}>
-                                El significado puede variar según el contexto actual.
+                            <p style={{ margin: '0 0 4px 0', fontSize: '0.85rem', color: theme.textSecondary, lineHeight: '1.4', textAlign: 'center' }}>
+                                {selectedWord.fromCache 
+                                    ? "El significado puede variar según el contexto actual." 
+                                    : "Actualmente estás viendo la traducción rápida sin detalles para ahorrar datos móviles."}
                             </p>
                             <button 
                                 onClick={handleRefreshTranslation}
@@ -2513,7 +3188,7 @@ function App() {
                                 onMouseOver={(e) => e.currentTarget.style.background = 'rgba(255, 159, 10, 0.22)'}
                                 onMouseOut={(e) => e.currentTarget.style.background = 'rgba(255, 159, 10, 0.12)'}
                             >
-                                Re-analizar contexto 🔄
+                                Re-analizar contexto {isDetailedMode ? "Detallado 🔄" : "Simple 🔄"}
                             </button>
                         </div>
                     )}
@@ -2521,7 +3196,7 @@ function App() {
                         <div className="card-info"><div className="label">ESPAÑOL</div><div className="val">{selectedWord.es}</div></div>
                         <div className="card-info"><div className="label">ENGLISH</div><div className="val">{selectedWord.en}</div></div>
                     </div>
-                    {selectedWord.alternatives && selectedWord.alternatives.length > 0 && (
+                    {isDetailedMode && selectedWord.alternatives && selectedWord.alternatives.length > 0 && (
                         <div style={{ 
                             background: 'rgba(255,255,255,0.04)', 
                             padding: '16px 20px', 
@@ -2532,22 +3207,24 @@ function App() {
                             <div style={{ fontSize: '0.7rem', color: '#86868b', fontWeight: '700', marginBottom: '6px', letterSpacing: '0.5px', textTransform: 'uppercase' }}>
                                 Otras Acepciones / Alternativas
                             </div>
-                            <div style={{ fontSize: '1.05rem', fontWeight: '600', color: '#fff' }}>
+                            <div style={{ fontSize: '1.05rem', fontWeight: '600', color: '#fff', textAlign: 'left' }}>
                                 {selectedWord.alternatives.join(', ')}
                             </div>
                         </div>
                     )}
-                    <div style={{ paddingLeft: '8px' }}>
-                        <h3 style={{ fontSize: '0.8rem', color: theme.textSecondary, textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '12px' }}>Contexto</h3>
-                        <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
-                            {(selectedWord.examples || []).map((ex, i) => (
-                                <li key={i} style={{ paddingLeft: '16px', borderLeft: `3px solid ${theme.accent}`, marginBottom: '16px' }}>
-                                    <p style={{ margin: '0 0 6px 0', fontSize: '1.1rem', fontFamily: '"New York", serif', color: '#E5E5E7', fontStyle: 'italic' }}>"{typeof ex === 'string' ? ex : ex.original}"</p>
-                                    {(typeof ex === 'object' && ex.es_translation) && <p style={{ margin: 0, fontSize: '0.9rem', color: '#86868b' }}>{ex.es_translation}</p>}
-                                </li>
-                            ))}
-                        </ul>
-                    </div>
+                    {isDetailedMode && selectedWord.examples && selectedWord.examples.length > 0 && (
+                        <div style={{ paddingLeft: '8px', textAlign: 'left' }}>
+                            <h3 style={{ fontSize: '0.8rem', color: theme.textSecondary, textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '12px' }}>Contexto</h3>
+                            <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
+                                {(selectedWord.examples || []).map((ex, i) => (
+                                    <li key={i} style={{ paddingLeft: '16px', borderLeft: `3px solid ${theme.accent}`, marginBottom: '16px' }}>
+                                        <p style={{ margin: '0 0 6px 0', fontSize: '1.1rem', fontFamily: '"New York", serif', color: '#E5E5E7', fontStyle: 'italic' }}>"{typeof ex === 'string' ? ex : ex.original}"</p>
+                                        {(typeof ex === 'object' && ex.es_translation) && <p style={{ margin: 0, fontSize: '0.9rem', color: '#86868b' }}>{ex.es_translation}</p>}
+                                    </li>
+                                ))}
+                            </ul>
+                        </div>
+                    )}
                 </div>
             </div>
           </>

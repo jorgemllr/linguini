@@ -1149,7 +1149,7 @@ function App() {
       audio.removeEventListener('pause', onPause);
       window.removeEventListener('beforeunload', handleUnloadSave);
     };
-  }, [activeAudio]);
+  }, [audioSrc]);
 
   const togglePlay = () => {
     const audio = audioRef.current;
@@ -2836,7 +2836,9 @@ function App() {
                     <button onClick={() => skipTime(10)} className="icon-btn-player"><ForwardIcon/></button>
                 </div>
             </div>
-            <audio ref={audioRef} src={audioSrc} onLoadedMetadata={handleAudioMetadataLoaded} />
+            <audio ref={audioRef} onLoadedMetadata={handleAudioMetadataLoaded}>
+              {audioSrc && <source src={audioSrc} type="audio/mpeg" />}
+            </audio>
         </div>
       )}
 

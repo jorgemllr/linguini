@@ -10,6 +10,29 @@ const getApiUrl = (path) => {
   return path;
 };
 
+const cleanTitle = (t) => {
+  if (!t) return "";
+  return t
+    .replace(/^Subrayados:\s*/i, "")
+    .replace(/\.[^.]+$/, "") // Remove extensions like .pdf or .mp3
+    .toLowerCase()
+    .replace(/[^a-z0-9]/g, "") // Remove all non-alphanumeric characters completely
+    .trim();
+};
+
+const isAudioMatchingDoc = (audio, doc) => {
+  if (!audio || !doc) return false;
+  if (audio.title === doc.title) return true;
+  if (audio.url && doc.audio_url && audio.url === doc.audio_url) return true;
+  
+  const cleanAudioTitle = cleanTitle(audio.title || "");
+  const cleanDocTitle = cleanTitle(doc.title || "");
+  
+  if (!cleanAudioTitle || !cleanDocTitle) return false;
+  
+  return cleanAudioTitle.includes(cleanDocTitle) || cleanDocTitle.includes(cleanAudioTitle);
+};
+
 // Supabase Storage: direct browser upload (bypasses Vercel 4.5MB limit)
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || '';
 const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY || '';
@@ -242,7 +265,7 @@ function App() {
 
   const getInitialAudioTime = (initAudio) => {
     if (initAudio && initAudio.title) {
-      const savedTime = localStorage.getItem(`audio-progress-${initAudio.title}`);
+      const savedTime = localStorage.getItem(`audio-progress-${cleanTitle(initAudio.title)}`);
       if (savedTime) {
         const parsedTime = parseFloat(savedTime);
         if (!isNaN(parsedTime)) return parsedTime;
@@ -262,28 +285,64 @@ function App() {
   }, [documents]);
   const [currentDoc, setCurrentDoc] = useState(initialDocVal);
   const [activeAudio, setActiveAudio] = useState(initialAudioVal);
+  const currentDocRef = useRef(currentDoc);
+  const activeAudioRef = useRef(activeAudio);
+
+  useEffect(() => {
+    currentDocRef.current = currentDoc;
+  }, [currentDoc]);
+
+  useEffect(() => {
+    activeAudioRef.current = activeAudio;
+  }, [activeAudio]);
+
+  const getActiveAudioTimeForDoc = () => {
+    const activeAudioVal = activeAudioRef.current;
+    const currentDocVal = currentDocRef.current;
+    if (activeAudioVal && currentDocVal && isAudioMatchingDoc(activeAudioVal, currentDocVal) && audioRef.current) {
+      return audioRef.current.currentTime;
+    }
+    return currentDocVal?.scroll_position || 0.0;
+  };
+
   const [currentPage, setCurrentPage] = useState(1);
   const currentPageRef = useRef(1);
   const pageHeightsRef = useRef({});
   const isRestoringScrollRef = useRef(true);
   const isInitialDocsLoadedRef = useRef(false);
+  const hasRestoredAudioRef = useRef(false);
 
-  const restorePageScroll = useCallback((targetPage, targetScroll) => {
+  const restorePageScroll = useCallback((targetPage, targetScroll, docToUse = currentDoc) => {
     isRestoringScrollRef.current = true;
     setCurrentPage(targetPage);
     currentPageRef.current = targetPage;
     
-    if (targetPage > 1) {
+    let targetContainerIdx = targetPage - 1; // Default sequential fallback
+    if (docToUse) {
+      const parts = docToUse.content.split('\n---\n');
+      const textContent = parts[0] || '';
+      const pageMatches = [...textContent.matchAll(/<!-- PAGE (\d+) -->/g)].map(m => parseInt(m[1], 10));
+      if (pageMatches.length > 0) {
+        const matchIdx = pageMatches.indexOf(targetPage);
+        if (matchIdx !== -1) {
+          targetContainerIdx = matchIdx + 1; // pageMatches[matchIdx] corresponds to pIdx = matchIdx + 1
+        } else if (targetPage < pageMatches[0]) {
+          targetContainerIdx = 0;
+        }
+      }
+    }
+    
+    if (targetContainerIdx > 0) {
       let attempts = 0;
       const scrollTimer = setInterval(() => {
-        const targetEl = document.querySelector(`[data-page-idx="${targetPage - 1}"]`);
+        const targetEl = document.querySelector(`[data-page-idx="${targetContainerIdx}"]`);
         attempts++;
         if (targetEl) {
           targetEl.scrollIntoView({ behavior: 'instant', block: 'start' });
           clearInterval(scrollTimer);
           setTimeout(() => {
             isRestoringScrollRef.current = false;
-            console.log("Restored reading progress to page:", targetPage);
+            console.log("Restored reading progress to page index:", targetContainerIdx, "visual page:", targetPage);
           }, 150);
         } else if (attempts > 80) { // 4 seconds max polling
           clearInterval(scrollTimer);
@@ -296,14 +355,37 @@ function App() {
         isRestoringScrollRef.current = false;
       }, 150);
     }
-  }, []);
+  }, [currentDoc]);
 
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [showAddModal, setShowAddModal] = useState(false);
   
+  const [isManualOffline, setIsManualOffline] = useState(() => localStorage.getItem('manual-offline') === 'true');
+  const [isOnline, setIsOnline] = useState(navigator.onLine);
+
+  useEffect(() => {
+    localStorage.setItem('manual-offline', isManualOffline.toString());
+  }, [isManualOffline]);
+
+  useEffect(() => {
+    const handleOnline = () => setIsOnline(true);
+    const handleOffline = () => setIsOnline(false);
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  }, []);
+
+  const isAppOffline = !isOnline || isManualOffline;
+  
   const [selectedWord, setSelectedWord] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [offlineDict, setOfflineDict] = useState(null);
+  const [showBookmarkModal, setShowBookmarkModal] = useState(false);
+  const [toastMessage, setToastMessage] = useState("");
 
   const [newTitle, setNewTitle] = useState("");
   const [newContent, setNewContent] = useState("");
@@ -437,11 +519,9 @@ function App() {
     pageHeightsRef.current = {};
   }, [currentDoc?.id]);
 
-  const syncReadingProgress = async (docId, pageNum, scrollY) => {
+  const syncReadingProgress = async (docId, pageNum, scrollY, force = false) => {
     if (!docId || docId === 'demo') return;
-    if (!isUserInteractedRef.current) {
-      return;
-    }
+    if (!force) return; // Disable automatic background writes
     try {
       await fetch(getApiUrl(`/api/documents/${docId}/progress`), {
         method: 'PUT',
@@ -453,11 +533,9 @@ function App() {
     }
   };
 
-  const syncGlobalSettings = async (docId, activeAudioObj) => {
+  const syncGlobalSettings = async (docId, activeAudioObj, force = false) => {
     if (!docId || docId === 'demo' || docId === 'global_settings') return;
-    if (!isUserInteractedRef.current) {
-      return;
-    }
+    if (!force) return; // Disable automatic background writes
     try {
       const stateContent = JSON.stringify({
         active_doc_id: docId,
@@ -471,6 +549,67 @@ function App() {
     } catch (err) {
       console.warn("⚠️ Error syncing global settings:", err);
     }
+  };
+
+  const showToast = (msg) => {
+    setToastMessage(msg);
+    setTimeout(() => {
+      setToastMessage("");
+    }, 4000);
+  };
+
+  const handleSaveBookmark = async () => {
+    if (!currentDoc) return;
+    const pageVal = currentPage;
+    const audioTimeVal = getActiveAudioTimeForDoc();
+    
+    // Save active text document progress to SQLite/Supabase (force = true)
+    await syncReadingProgress(currentDoc.id, pageVal, audioTimeVal, true);
+    await syncGlobalSettings(currentDoc.id, activeAudio, true);
+    
+    // Symmetrically locate and update the associated audio document progress in the database
+    let associatedAudioDoc = null;
+    if (activeAudio) {
+      associatedAudioDoc = documents.find(d => d.id !== currentDoc.id && isAudioMatchingDoc(activeAudio, d));
+      if (associatedAudioDoc) {
+        await syncReadingProgress(associatedAudioDoc.id, associatedAudioDoc.current_page || 1, audioTimeVal, true);
+      }
+    }
+    
+    // Save to localStorage for robust recovery
+    localStorage.setItem(`current-page-${currentDoc.id}`, pageVal.toString());
+    localStorage.setItem(`scroll-position-${currentDoc.id}`, audioTimeVal.toString());
+    if (activeAudio && isAudioMatchingDoc(activeAudio, currentDoc)) {
+      localStorage.setItem(`audio-progress-${cleanTitle(activeAudio.title)}`, audioTimeVal.toString());
+    }
+
+    // Immediately update local React state for both documents so UI remains fully in sync
+    const updatedDoc = {
+      ...currentDoc,
+      current_page: pageVal,
+      scroll_position: audioTimeVal
+    };
+    setCurrentDoc(updatedDoc);
+    localStorage.setItem('last-opened-doc', JSON.stringify(updatedDoc));
+    
+    setDocuments(prev => prev.map(d => {
+      if (d.id === currentDoc.id) {
+        return updatedDoc;
+      }
+      if (associatedAudioDoc && d.id === associatedAudioDoc.id) {
+        return { ...d, scroll_position: audioTimeVal };
+      }
+      return d;
+    }));
+
+    // Show toast
+    const mins = Math.floor(audioTimeVal / 60);
+    const secs = Math.floor(audioTimeVal % 60);
+    const audioInfo = activeAudio && isAudioMatchingDoc(activeAudio, currentDoc)
+      ? ` | Audio: ${mins}:${secs < 10 ? '0' : ''}${secs}`
+      : "";
+    showToast(`🔖 Separador Guardado: Pág. ${pageVal}${audioInfo}`);
+    setShowBookmarkModal(false);
   };
 
   const processPendingQueue = useCallback(async () => {
@@ -646,23 +785,18 @@ function App() {
     restorePageScroll(targetPage, targetScroll);
 
     let lastScrollSaveTime = 0;
-    
-    const getActiveAudioTimeForDoc = () => {
-      if (activeAudio && currentDoc && activeAudio.title === currentDoc.title && audioRef.current) {
-        return audioRef.current.currentTime;
-      }
-      return currentDoc?.scroll_position || 0.0;
-    };
 
     const saveImmediateScroll = (forcePage, forceScroll) => {
       if (isRestoringScrollRef.current) return;
+      const currentDocVal = currentDocRef.current;
+      if (!currentDocVal) return;
       const pageVal = forcePage !== undefined ? forcePage : (currentPageRef.current || 1);
       const audioTimeVal = getActiveAudioTimeForDoc();
       
-      localStorage.setItem(`scroll-position-${currentDoc.id}`, audioTimeVal.toString());
-      localStorage.setItem(`current-page-${currentDoc.id}`, pageVal.toString());
+      localStorage.setItem(`scroll-position-${currentDocVal.id}`, audioTimeVal.toString());
+      localStorage.setItem(`current-page-${currentDocVal.id}`, pageVal.toString());
       
-      syncReadingProgress(currentDoc.id, pageVal, audioTimeVal);
+      syncReadingProgress(currentDocVal.id, pageVal, audioTimeVal);
     };
 
     const handleScroll = () => {
@@ -692,7 +826,20 @@ function App() {
         }
       });
       
-      const newPage = closestPageIdx + 1;
+      let newPage = closestPageIdx + 1;
+      const currentDocVal = currentDocRef.current;
+      if (currentDocVal) {
+        const parts = currentDocVal.content.split('\n---\n');
+        const textContent = parts[0] || '';
+        const pageMatches = [...textContent.matchAll(/<!-- PAGE (\d+) -->/g)].map(m => parseInt(m[1], 10));
+        if (pageMatches.length > 0) {
+          if (closestPageIdx === 0) {
+            newPage = Math.max(1, pageMatches[0] - 1);
+          } else {
+            newPage = pageMatches[closestPageIdx - 1] || closestPageIdx + 1;
+          }
+        }
+      }
       if (newPage !== currentPageRef.current) {
         currentPageRef.current = newPage;
         setCurrentPage(newPage);
@@ -754,6 +901,23 @@ function App() {
     loadCachedUrls();
   }, []);
 
+  // Cargar diccionario offline en startup
+  useEffect(() => {
+    const loadDictionary = async () => {
+      try {
+        console.log("Cargando diccionario offline...");
+        const res = await fetch('/dictionary_en_es.json');
+        if (!res.ok) throw new Error("No se pudo cargar el diccionario.");
+        const data = await res.json();
+        setOfflineDict(data);
+        console.log("Diccionario offline cargado con éxito.");
+      } catch (err) {
+        console.warn("⚠️ Error cargando diccionario offline:", err);
+      }
+    };
+    loadDictionary();
+  }, []);
+
   // 1. Cargar documentos y archivos de Obsidian en startup
   useEffect(() => {
     const fetchDocs = async () => {
@@ -803,7 +967,7 @@ function App() {
             // Sincronizar todos los progresos de la base de datos con el almacenamiento local local y global
             cloudDocs.forEach(doc => {
               if (doc.scroll_position > 0) {
-                localStorage.setItem(`audio-progress-${doc.title}`, doc.scroll_position.toString());
+                localStorage.setItem(`audio-progress-${cleanTitle(doc.title)}`, doc.scroll_position.toString());
               }
               if (doc.current_page > 0) {
                 localStorage.setItem(`current-page-${doc.id}`, doc.current_page.toString());
@@ -831,7 +995,7 @@ function App() {
             if (resolvedAudio) {
               setActiveAudio(resolvedAudio);
               // Seek immediately if progress exists
-              const associatedDoc = merged.find(d => d.title === resolvedAudio.title || (d.audio_url && d.audio_url.includes(resolvedAudio.url)));
+              const associatedDoc = merged.find(d => isAudioMatchingDoc(resolvedAudio, d));
               if (associatedDoc && associatedDoc.scroll_position > 0) {
                 setCurrentTime(associatedDoc.scroll_position);
                 if (audioRef.current && audioRef.current.readyState >= 1) {
@@ -864,14 +1028,15 @@ function App() {
               
               const targetPage = resolvedDoc.current_page || 1;
               const targetScroll = resolvedDoc.scroll_position || 0.0;
-              restorePageScroll(targetPage, targetScroll);
+              restorePageScroll(targetPage, targetScroll, resolvedDoc);
             }
         } catch (err) {
             console.warn("⚠️ No se pudieron cargar los documentos locales:", err);
         }
     };
     fetchDocs();
-  }, [restorePageScroll]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // 2. Guardar documento
   const handleSaveDocument = async () => {
@@ -1104,6 +1269,49 @@ function App() {
     }
   }, [activeAudio]);
 
+  // Reset progress restoration flag when active audio changes
+  useEffect(() => {
+    hasRestoredAudioRef.current = false;
+  }, [activeAudio?.url]);
+
+  // Reactive audio position restoration that resolves startup timing and race conditions
+  useEffect(() => {
+    const audio = audioRef.current;
+    if (!audio || hasRestoredAudioRef.current) return;
+    
+    // Only restore if initial documents have loaded from SQLite/Supabase and audio metadata is ready
+    if (isInitialDocsLoadedRef.current && audio.readyState >= 1 && activeAudio && activeAudio.title) {
+      const associatedDoc = documents.find(d => isAudioMatchingDoc(activeAudio, d));
+      let seekTime = 0;
+      if (associatedDoc && associatedDoc.scroll_position > 0) {
+        seekTime = associatedDoc.scroll_position;
+      } else {
+        const savedTime = localStorage.getItem(`audio-progress-${cleanTitle(activeAudio.title)}`);
+        if (savedTime) {
+          const parsedTime = parseFloat(savedTime);
+          if (!isNaN(parsedTime)) {
+            seekTime = parsedTime;
+          }
+        }
+      }
+
+      if (seekTime > 0) {
+        try {
+          audio.currentTime = seekTime;
+          audio.playbackRate = playbackRate;
+          setCurrentTime(seekTime);
+          hasRestoredAudioRef.current = true;
+          console.log("⚓️ Reactively restored playback position to:", seekTime);
+        } catch (err) {
+          console.warn("Failed reactively seeking audio:", err);
+        }
+      } else {
+        // If seekTime is 0, count as restored (no seeking needed)
+        hasRestoredAudioRef.current = true;
+      }
+    }
+  }, [documents, activeAudio, audioSrc, playbackRate]);
+
   // 3. Audio listeners (Podcast / Audiolibros desacoplados) con rendimiento optimizado (Throttling)
   useEffect(() => {
     setIsPlaying(false);
@@ -1116,13 +1324,15 @@ function App() {
 
     const saveImmediateAudioProgress = (timeToSave) => {
       if (!isInitialDocsLoadedRef.current) return; // Evitar que valores obsoletos locales pisen la BD al iniciar
-      if (activeAudio && activeAudio.title && timeToSave !== undefined) {
+      const currentActiveAudio = activeAudioRef.current;
+      const currentDocVal = currentDocRef.current;
+      if (currentActiveAudio && currentActiveAudio.title && timeToSave !== undefined) {
         // Prevent saving 0 or progress updates when the audio element has been reset (readyState < 1)
         if (audio && audio.readyState >= 1) {
-          localStorage.setItem(`audio-progress-${activeAudio.title}`, timeToSave.toString());
-          const associatedDoc = documentsRef.current.find(d => d.title === activeAudio.title || (d.audio_url && d.audio_url.includes(activeAudio.url)));
+          localStorage.setItem(`audio-progress-${cleanTitle(currentActiveAudio.title)}`, timeToSave.toString());
+          const associatedDoc = documentsRef.current.find(d => isAudioMatchingDoc(currentActiveAudio, d));
           if (associatedDoc) {
-            const pageVal = (currentDoc && currentDoc.id === associatedDoc.id) ? (currentPageRef.current || 1) : (associatedDoc.current_page || 1);
+            const pageVal = (currentDocVal && currentDocVal.id === associatedDoc.id) ? (currentPageRef.current || 1) : (associatedDoc.current_page || 1);
             syncReadingProgress(associatedDoc.id, pageVal, timeToSave);
           }
         }
@@ -1131,12 +1341,13 @@ function App() {
 
     // Cargar progreso del activeAudio y setearlo en el estado síncronamente
     let initialSeekTime = 0;
-    if (activeAudio && activeAudio.title) {
-      const associatedDoc = documentsRef.current.find(d => d.title === activeAudio.title || (d.audio_url && d.audio_url.includes(activeAudio.url)));
+    const currentActiveAudio = activeAudioRef.current;
+    if (currentActiveAudio && currentActiveAudio.title) {
+      const associatedDoc = documentsRef.current.find(d => isAudioMatchingDoc(currentActiveAudio, d));
       if (associatedDoc && associatedDoc.scroll_position > 0) {
         initialSeekTime = associatedDoc.scroll_position;
       } else {
-        const savedTime = localStorage.getItem(`audio-progress-${activeAudio.title}`);
+        const savedTime = localStorage.getItem(`audio-progress-${cleanTitle(currentActiveAudio.title)}`);
         if (savedTime) {
           const parsedTime = parseFloat(savedTime);
           if (!isNaN(parsedTime)) {
@@ -1153,12 +1364,13 @@ function App() {
       
       // Calcular el tiempo de seek de forma completamente dinámica para evitar closures obsoletos de React
       let seekTime = 0;
-      if (activeAudio && activeAudio.title) {
-        const associatedDoc = documentsRef.current.find(d => d.title === activeAudio.title || (d.audio_url && d.audio_url.includes(activeAudio.url)));
+      const activeAudioVal = activeAudioRef.current;
+      if (activeAudioVal && activeAudioVal.title) {
+        const associatedDoc = documentsRef.current.find(d => isAudioMatchingDoc(activeAudioVal, d));
         if (associatedDoc && associatedDoc.scroll_position > 0) {
           seekTime = associatedDoc.scroll_position;
         } else {
-          const savedTime = localStorage.getItem(`audio-progress-${activeAudio.title}`);
+          const savedTime = localStorage.getItem(`audio-progress-${cleanTitle(activeAudioVal.title)}`);
           if (savedTime) {
             const parsedTime = parseFloat(savedTime);
             if (!isNaN(parsedTime)) {
@@ -1250,9 +1462,10 @@ function App() {
     if (!audio) return;
     if (audio.paused) {
       // Fallback: Si el currentTime está en 0, pero hay progreso guardado, restaurarlo justo antes de reproducir
-      if (audio.currentTime === 0 && activeAudio && activeAudio.title) {
-        const associatedDoc = documentsRef.current.find(d => d.title === activeAudio.title || (d.audio_url && d.audio_url.includes(activeAudio.url)));
-        const savedTime = associatedDoc && associatedDoc.scroll_position > 0 ? associatedDoc.scroll_position.toString() : localStorage.getItem(`audio-progress-${activeAudio.title}`);
+      const currentActiveAudio = activeAudioRef.current;
+      if (audio.currentTime === 0 && currentActiveAudio && currentActiveAudio.title) {
+        const associatedDoc = documentsRef.current.find(d => isAudioMatchingDoc(currentActiveAudio, d));
+        const savedTime = associatedDoc && associatedDoc.scroll_position > 0 ? associatedDoc.scroll_position.toString() : localStorage.getItem(`audio-progress-${cleanTitle(currentActiveAudio.title)}`);
         if (savedTime) {
           const parsedTime = parseFloat(savedTime);
           if (!isNaN(parsedTime)) {
@@ -1268,12 +1481,14 @@ function App() {
     } else {
       audio.pause();
       setIsPlaying(false);
-      if (activeAudio && activeAudio.title && audio.readyState >= 1) {
+      const currentActiveAudio = activeAudioRef.current;
+      const currentDocVal = currentDocRef.current;
+      if (currentActiveAudio && currentActiveAudio.title && audio.readyState >= 1) {
         const timeToSave = audio.currentTime;
-        localStorage.setItem(`audio-progress-${activeAudio.title}`, timeToSave.toString());
-        const associatedDoc = documentsRef.current.find(d => d.title === activeAudio.title || (d.audio_url && d.audio_url.includes(activeAudio.url)));
+        localStorage.setItem(`audio-progress-${cleanTitle(currentActiveAudio.title)}`, timeToSave.toString());
+        const associatedDoc = documentsRef.current.find(d => isAudioMatchingDoc(currentActiveAudio, d));
         if (associatedDoc) {
-          const pageVal = (currentDoc && currentDoc.id === associatedDoc.id) ? (currentPageRef.current || 1) : (associatedDoc.current_page || 1);
+          const pageVal = (currentDocVal && currentDocVal.id === associatedDoc.id) ? (currentPageRef.current || 1) : (associatedDoc.current_page || 1);
           syncReadingProgress(associatedDoc.id, pageVal, timeToSave);
         }
       }
@@ -1286,9 +1501,10 @@ function App() {
     audio.playbackRate = playbackRate;
 
     // Restaurar progreso síncronamente en cuanto el elemento cargue los metadatos
-    if (activeAudio && activeAudio.title) {
-      const associatedDoc = documentsRef.current.find(d => d.title === activeAudio.title || (d.audio_url && d.audio_url.includes(activeAudio.url)));
-      const savedTime = associatedDoc && associatedDoc.scroll_position > 0 ? associatedDoc.scroll_position.toString() : localStorage.getItem(`audio-progress-${activeAudio.title}`);
+    const currentActiveAudio = activeAudioRef.current;
+    if (currentActiveAudio && currentActiveAudio.title) {
+      const associatedDoc = documentsRef.current.find(d => isAudioMatchingDoc(currentActiveAudio, d));
+      const savedTime = associatedDoc && associatedDoc.scroll_position > 0 ? associatedDoc.scroll_position.toString() : localStorage.getItem(`audio-progress-${cleanTitle(currentActiveAudio.title)}`);
       if (savedTime) {
         const parsedTime = parseFloat(savedTime);
         if (!isNaN(parsedTime)) {
@@ -1309,11 +1525,13 @@ function App() {
     const newTime = Math.min(Math.max(audio.currentTime + s, 0), duration);
     audio.currentTime = newTime;
     setCurrentTime(newTime);
-    if (activeAudio && activeAudio.title) {
-      localStorage.setItem(`audio-progress-${activeAudio.title}`, newTime.toString());
-      const associatedDoc = documentsRef.current.find(d => d.title === activeAudio.title || (d.audio_url && d.audio_url.includes(activeAudio.url)));
+    const currentActiveAudio = activeAudioRef.current;
+    const currentDocVal = currentDocRef.current;
+    if (currentActiveAudio && currentActiveAudio.title) {
+      localStorage.setItem(`audio-progress-${cleanTitle(currentActiveAudio.title)}`, newTime.toString());
+      const associatedDoc = documentsRef.current.find(d => isAudioMatchingDoc(currentActiveAudio, d));
       if (associatedDoc) {
-        const pageVal = (currentDoc && currentDoc.id === associatedDoc.id) ? (currentPageRef.current || 1) : (associatedDoc.current_page || 1);
+        const pageVal = (currentDocVal && currentDocVal.id === associatedDoc.id) ? (currentPageRef.current || 1) : (associatedDoc.current_page || 1);
         syncReadingProgress(associatedDoc.id, pageVal, newTime);
       }
     }
@@ -1338,11 +1556,13 @@ function App() {
     setIsDragging(false);
     
     // Guardar progreso en localStorage de forma inmediata al terminar de arrastrar
-    if (activeAudio && activeAudio.title) {
-      localStorage.setItem(`audio-progress-${activeAudio.title}`, t.toString());
-      const associatedDoc = documentsRef.current.find(d => d.title === activeAudio.title || (d.audio_url && d.audio_url.includes(activeAudio.url)));
+    const currentActiveAudio = activeAudioRef.current;
+    const currentDocVal = currentDocRef.current;
+    if (currentActiveAudio && currentActiveAudio.title) {
+      localStorage.setItem(`audio-progress-${cleanTitle(currentActiveAudio.title)}`, t.toString());
+      const associatedDoc = documentsRef.current.find(d => isAudioMatchingDoc(currentActiveAudio, d));
       if (associatedDoc) {
-        const pageVal = (currentDoc && currentDoc.id === associatedDoc.id) ? (currentPageRef.current || 1) : (associatedDoc.current_page || 1);
+        const pageVal = (currentDocVal && currentDocVal.id === associatedDoc.id) ? (currentPageRef.current || 1) : (associatedDoc.current_page || 1);
         syncReadingProgress(associatedDoc.id, pageVal, t);
       }
     }
@@ -1634,6 +1854,65 @@ function App() {
     modalOpenedTime.current = Date.now();
     setSelectedWord({ word: cleanWord, es: "...", en: "...", examples: [], associatedPhrase });
 
+    // 2. Si el modo offline está activo (manual o por falta de red), ir directo al diccionario local
+    if (isAppOffline) {
+        const pendingTrans = localStorage.getItem('pending-offline-translations');
+        let list = [];
+        try {
+          if (pendingTrans) list = JSON.parse(pendingTrans);
+          if (!Array.isArray(list)) list = [];
+        } catch (err) {}
+        
+        const exists = list.some(item => item.word === searchWord && item.language === (currentDoc?.language || 'auto'));
+        if (!exists) {
+          list.push({
+            word: searchWord,
+            context: surroundingSentence,
+            language: currentDoc?.language || 'auto',
+            mode: isDetailedMode ? 'detailed' : 'simple'
+          });
+          localStorage.setItem('pending-offline-translations', JSON.stringify(list));
+        }
+
+        // Buscar en el diccionario offline
+        const isEnglish = (currentDoc?.language || 'en').startsWith('en');
+        if (isEnglish && offlineDict) {
+          const lookupKey = searchWord.toLowerCase();
+          const lemma = offlineDict.lemmas[lookupKey];
+          const baseWord = lemma || lookupKey;
+          const entry = offlineDict.words[baseWord];
+          
+          if (entry) {
+            setSelectedWord({
+              word: cleanWord,
+              es: entry.es,
+              en: baseWord,
+              grammar: entry.grammar || "Vocabulario (Offline)",
+              alternatives: entry.alternatives || [],
+              examples: entry.examples || [],
+              associatedPhrase,
+              fromCache: false,
+              isOfflineDict: true
+            });
+            setIsLoading(false);
+            return;
+          }
+        }
+
+        setSelectedWord({
+          word: cleanWord,
+          es: "Modo offline activo. Palabra guardada.",
+          en: "Offline mode active. Word saved.",
+          grammar: "Se procesará al desactivar modo offline y estar online",
+          examples: [],
+          associatedPhrase,
+          fromCache: false,
+          isOfflineSaved: true
+        });
+        setIsLoading(false);
+        return;
+    }
+
     // CACHÉ
     try {
         const cacheRes = await fetch(getApiUrl(`/api/word_cache?word=${searchWord}&language=${currentDoc?.language || 'auto'}`));
@@ -1709,6 +1988,30 @@ function App() {
           localStorage.setItem('pending-offline-translations', JSON.stringify(list));
         }
 
+        // Buscar en el diccionario offline si está cargado y el idioma es inglés
+        const isEnglish = (currentDoc?.language || 'en').startsWith('en');
+        if (isEnglish && offlineDict) {
+          const lookupKey = searchWord.toLowerCase();
+          const lemma = offlineDict.lemmas[lookupKey];
+          const baseWord = lemma || lookupKey;
+          const entry = offlineDict.words[baseWord];
+          
+          if (entry) {
+            setSelectedWord({
+              word: cleanWord,
+              es: entry.es,
+              en: baseWord,
+              grammar: entry.grammar || "Vocabulario (Offline)",
+              alternatives: entry.alternatives || [],
+              examples: entry.examples || [],
+              associatedPhrase,
+              fromCache: false,
+              isOfflineDict: true
+            });
+            return;
+          }
+        }
+
         setSelectedWord({
           word: cleanWord,
           es: "Sin conexión. Palabra guardada.",
@@ -1727,7 +2030,7 @@ function App() {
         setIsLoading(false);
       }
     }
-  }, [currentDoc, isDetailedMode]);
+  }, [currentDoc, isDetailedMode, offlineDict]);
 
   const handleRefreshTranslation = useCallback(async () => {
     if (!selectedWord) return;
@@ -1742,6 +2045,63 @@ function App() {
     const searchWord = selectedWord.word.toLowerCase();
     const context = dragParagraphText.current || "";
     
+    if (isAppOffline) {
+        const pendingTrans = localStorage.getItem('pending-offline-translations');
+        let list = [];
+        try {
+          if (pendingTrans) list = JSON.parse(pendingTrans);
+          if (!Array.isArray(list)) list = [];
+        } catch (err) {}
+        
+        const exists = list.some(item => item.word === searchWord && item.language === (currentDoc?.language || 'auto'));
+        if (!exists) {
+          list.push({
+            word: searchWord,
+            context: context,
+            language: currentDoc?.language || 'auto',
+            mode: isDetailedMode ? 'detailed' : 'simple'
+          });
+          localStorage.setItem('pending-offline-translations', JSON.stringify(list));
+        }
+
+        const isEnglish = (currentDoc?.language || 'en').startsWith('en');
+        if (isEnglish && offlineDict) {
+          const lookupKey = searchWord.toLowerCase();
+          const lemma = offlineDict.lemmas[lookupKey];
+          const baseWord = lemma || lookupKey;
+          const entry = offlineDict.words[baseWord];
+          
+          if (entry) {
+            setSelectedWord({
+              word: selectedWord.word,
+              es: entry.es,
+              en: baseWord,
+              grammar: entry.grammar || "Vocabulario (Offline)",
+              alternatives: entry.alternatives || [],
+              examples: entry.examples || [],
+              associatedPhrase: selectedWord.associatedPhrase,
+              fromCache: false,
+              isOfflineDict: true
+            });
+            setIsLoading(false);
+            return;
+          }
+        }
+
+        setSelectedWord({
+          word: selectedWord.word,
+          es: "Modo offline activo. Palabra guardada.",
+          en: "Offline mode active. Word saved.",
+          grammar: "Se procesará al desactivar modo offline y estar online",
+          examples: [],
+          associatedPhrase: selectedWord.associatedPhrase,
+          fromCache: false,
+          isOfflineSaved: true
+        });
+        setIsLoading(false);
+        return;
+    }
+
     const API_URL = getApiUrl('/api/analyze');
     try {
       const res = await fetch(API_URL, {
@@ -1804,6 +2164,30 @@ function App() {
           localStorage.setItem('pending-offline-translations', JSON.stringify(list));
         }
 
+        // Buscar en el diccionario offline si está cargado y el idioma es inglés
+        const isEnglish = (currentDoc?.language || 'en').startsWith('en');
+        if (isEnglish && offlineDict) {
+          const lookupKey = searchWord.toLowerCase();
+          const lemma = offlineDict.lemmas[lookupKey];
+          const baseWord = lemma || lookupKey;
+          const entry = offlineDict.words[baseWord];
+          
+          if (entry) {
+            setSelectedWord({
+              word: selectedWord.word,
+              es: entry.es,
+              en: baseWord,
+              grammar: entry.grammar || "Vocabulario (Offline)",
+              alternatives: entry.alternatives || [],
+              examples: entry.examples || [],
+              associatedPhrase: selectedWord.associatedPhrase,
+              fromCache: false,
+              isOfflineDict: true
+            });
+            return;
+          }
+        }
+
         setSelectedWord({
           word: selectedWord.word,
           es: "Sin conexión. Palabra guardada.",
@@ -1830,7 +2214,7 @@ function App() {
         setIsLoading(false);
       }
     }
-  }, [selectedWord, currentDoc, isDetailedMode]);
+  }, [selectedWord, currentDoc, isDetailedMode, offlineDict]);
 
   const handleWordLongPress = useCallback(async (clickedWord, surroundingSentence) => {
     const cleanWord = clickedWord
@@ -1892,6 +2276,10 @@ function App() {
                 }
               }
             });
+            // Eliminar la frase de la base de datos de caché de vocabulario (word_cache)
+            fetch(getApiUrl(`/api/word_cache?word=${phraseText.toLowerCase()}&language=${currentDoc?.language || 'auto'}`), {
+              method: 'DELETE'
+            }).catch(err => console.error("Error al eliminar frase de SQLite:", err));
             return false;
           }
         } else if (w.includes(' ')) {
@@ -1909,6 +2297,10 @@ function App() {
                 el.removeAttribute('data-is-highlighted');
               });
             });
+            // Eliminar la frase de la base de datos de caché de vocabulario (word_cache)
+            fetch(getApiUrl(`/api/word_cache?word=${w}&language=${currentDoc?.language || 'auto'}`), {
+              method: 'DELETE'
+            }).catch(err => console.error("Error al eliminar frase de SQLite:", err));
             return false;
           }
         }
@@ -2382,13 +2774,24 @@ function App() {
     const pageSplits = textContent.split(/<!-- PAGE \d+ -->/);
     const pageMatches = [...textContent.matchAll(/<!-- PAGE (\d+) -->/g)].map(m => m[1]);
 
+    const pageMatchesInt = pageMatches.map(m => parseInt(m, 10));
+    let currentContainerIdx = currentPage - 1;
+    if (pageMatchesInt.length > 0) {
+      const matchIdx = pageMatchesInt.indexOf(currentPage);
+      if (matchIdx !== -1) {
+        currentContainerIdx = matchIdx + 1;
+      } else if (currentPage < pageMatchesInt[0]) {
+        currentContainerIdx = 0;
+      }
+    }
+
     return pageSplits.map((pageText, pIdx) => {
         const pageNum = pageMatches[pIdx - 1] || null; // El primer split está antes de la primera etiqueta
         const paragraphs = pageText.split('\n\n').filter(p => p.trim() !== '');
 
         if (paragraphs.length === 0) return null;
 
-        const isNear = Math.abs(pIdx - (currentPage - 1)) <= 1;
+        const isNear = Math.abs(pIdx - currentContainerIdx) <= 1;
         
         if (!isNear) {
             const savedHeight = pageHeightsRef.current[pIdx];
@@ -2683,12 +3086,78 @@ function App() {
                {currentDoc ? (currentDoc.title.length > 25 ? currentDoc.title.substring(0,25)+'...' : currentDoc.title) : 'Linguini'}
              </h1>
          </div>
-         <button onClick={() => {
-             const now = new Date();
-             setNewTitle(`Nota ${now.getDate()}/${now.getMonth()+1} ${now.getHours()}:${now.getMinutes()}`);
-             setNewContent("");
-             setShowAddModal(true);
-         }} className="icon-btn" style={{ color: theme.accent }}><PlusIcon/></button>
+         <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
+             <button 
+                 onClick={() => {
+                     if (!isOnline) {
+                         showToast("Estás sin conexión a internet.");
+                     } else {
+                         setIsManualOffline(prev => !prev);
+                         showToast(!isManualOffline ? "Modo offline manual activado para ahorrar créditos." : "Conectado a Internet.");
+                     }
+                 }} 
+                 style={{ 
+                     display: 'flex', 
+                     alignItems: 'center', 
+                     gap: '5px', 
+                     fontSize: '0.8rem', 
+                     fontWeight: '600', 
+                     padding: '6px 12px', 
+                     borderRadius: '20px',
+                     border: '1px solid',
+                     cursor: 'pointer',
+                     transition: 'all 0.2s',
+                     outline: 'none',
+                     backgroundColor: !isOnline 
+                         ? 'rgba(255, 69, 58, 0.1)' 
+                         : isManualOffline 
+                             ? 'rgba(255, 159, 10, 0.15)' 
+                             : 'rgba(48, 209, 88, 0.1)',
+                     color: !isOnline 
+                         ? '#FF453A' 
+                         : isManualOffline 
+                             ? '#FF9F0A' 
+                             : '#30D158',
+                     borderColor: !isOnline 
+                         ? 'rgba(255, 69, 58, 0.2)' 
+                         : isManualOffline 
+                             ? 'rgba(255, 159, 10, 0.3)' 
+                             : 'rgba(48, 209, 88, 0.2)',
+                 }}
+                 title={!isOnline ? "Sin conexión a internet (Modo Offline automático)" : isManualOffline ? "Modo Offline forzado manualmente (Haz clic para conectar)" : "Conectado a internet (Haz clic para forzar Offline)"}
+             >
+                 <span>{!isOnline ? '📴' : isManualOffline ? '📴' : '📶'}</span>
+                 <span>{!isOnline ? 'Sin Red' : isManualOffline ? 'Offline' : 'Online'}</span>
+             </button>
+             {currentDoc && currentDoc.id !== 'demo' && (
+                 <button 
+                     onClick={() => setShowBookmarkModal(true)} 
+                     className="icon-btn" 
+                     style={{ 
+                         color: '#FF9F0A', 
+                         display: 'flex', 
+                         alignItems: 'center', 
+                         gap: '6px', 
+                         fontSize: '0.85rem', 
+                         fontWeight: '600', 
+                         background: 'rgba(255, 159, 10, 0.1)', 
+                         padding: '6px 12px', 
+                         borderRadius: '20px',
+                         border: '1px solid rgba(255, 159, 10, 0.2)'
+                     }}
+                     title="Separador Digital (Congelar Estado)"
+                 >
+                     <span>🔖</span>
+                     <span style={{ display: 'inline' }}>Separador</span>
+                 </button>
+             )}
+             <button onClick={() => {
+                 const now = new Date();
+                 setNewTitle(`Nota ${now.getDate()}/${now.getMonth()+1} ${now.getHours()}:${now.getMinutes()}`);
+                 setNewContent("");
+                 setShowAddModal(true);
+             }} className="icon-btn" style={{ color: theme.accent }}><PlusIcon/></button>
+         </div>
       </header>
 
       {/* SIDEBAR */}
@@ -3010,7 +3479,64 @@ function App() {
         </div>
       )}
 
+      {/* TOAST TEMPORAL */}
+      {toastMessage && (
+        <div style={{
+          position: 'fixed', top: '20px', left: '50%', transform: 'translateX(-50%)',
+          backgroundColor: '#30D158', color: '#fff', padding: '12px 24px',
+          borderRadius: '12px', zIndex: 9999, fontWeight: '600', boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+          animation: 'slideDown 0.3s cubic-bezier(0.2, 0.8, 0.2, 1)', fontSize: '0.9rem'
+        }}>
+          {toastMessage}
+        </div>
+      )}
 
+      {/* MODAL SEPARADOR DIGITAL (CONGELAR ESTADO) */}
+      {showBookmarkModal && currentDoc && (
+        <div style={{ position: 'fixed', inset: 0, zIndex: 2000, background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(8px)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <div style={{ background: '#1C1C1E', width: '90%', maxWidth: '420px', padding: '30px', borderRadius: '24px', boxShadow: '0 25px 50px rgba(0,0,0,0.7)', border: `1px solid ${theme.border}` }}>
+                <h3 style={{ marginTop: 0, color: 'white', marginBottom: '15px', fontSize: '1.3rem', fontWeight: '700', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <span>🔖</span> Separador Digital
+                </h3>
+                <p style={{ color: theme.textSecondary, fontSize: '0.9rem', lineHeight: '1.4', marginBottom: '20px', textAlign: 'left' }}>
+                  ¿Confirmas guardar y sincronizar tu posición actual en este dispositivo?
+                </p>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', background: 'rgba(255,255,255,0.03)', padding: '16px', borderRadius: '16px', marginBottom: '24px', border: '1px solid rgba(255,255,255,0.05)', textAlign: 'left' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem' }}>
+                    <span style={{ color: theme.textSecondary }}>Libro:</span>
+                    <span style={{ color: 'white', fontWeight: '600', maxWidth: '220px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{currentDoc.title}</span>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem' }}>
+                    <span style={{ color: theme.textSecondary }}>Página:</span>
+                    <span style={{ color: 'white', fontWeight: '600' }}>{currentPage}</span>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem' }}>
+                    <span style={{ color: theme.textSecondary }}>Audio:</span>
+                    <span style={{ color: 'white', fontWeight: '600', maxWidth: '220px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {activeAudio && isAudioMatchingDoc(activeAudio, currentDoc) ? activeAudio.name || activeAudio.title : 'Ninguno'}
+                    </span>
+                  </div>
+                  {activeAudio && isAudioMatchingDoc(activeAudio, currentDoc) && (
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem' }}>
+                      <span style={{ color: theme.textSecondary }}>Tiempo de Audio:</span>
+                      <span style={{ color: 'white', fontWeight: '600' }}>
+                        {(() => {
+                          const t = getActiveAudioTimeForDoc();
+                          const m = Math.floor(t / 60);
+                          const s = Math.floor(t % 60);
+                          return `${m}:${s < 10 ? '0' : ''}${s}`;
+                        })()}
+                      </span>
+                    </div>
+                  )}
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px' }}>
+                    <button onClick={() => setShowBookmarkModal(false)} className="btn-secondary" style={{ padding: '10px 16px', fontSize: '0.9rem' }}>Cancelar</button>
+                    <button onClick={handleSaveBookmark} className="btn-primary" style={{ padding: '10px 20px', fontSize: '0.9rem', background: '#FF9F0A' }}>Guardar Posición</button>
+                </div>
+            </div>
+        </div>
+      )}
 
       {/* MODAL AGREGAR TEXTO */}
       {showAddModal && (
@@ -3312,7 +3838,31 @@ function App() {
                             </button>
                         </div>
                     )}
-                    {(selectedWord.fromCache || (!selectedWord.fromCache && !isDetailedMode)) && (
+                    {selectedWord.isOfflineDict && (
+                        <div style={{ 
+                            background: 'rgba(48, 209, 88, 0.08)',
+                            border: '1px dashed rgba(48, 209, 88, 0.3)',
+                            borderRadius: '16px',
+                            padding: '12px 20px',
+                            marginBottom: '20px',
+                            display: 'flex',
+                            flexDirection: 'column',
+                            alignItems: 'center',
+                            textAlign: 'center',
+                            gap: '4px'
+                        }}>
+                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>
+                                <span style={{ fontSize: '0.9rem' }}>📖</span>
+                                <span style={{ fontSize: '0.75rem', fontWeight: '700', letterSpacing: '0.5px', color: '#30D158', textTransform: 'uppercase' }}>
+                                    Diccionario Local (Offline)
+                                </span>
+                            </div>
+                            <p style={{ margin: 0, fontSize: '0.8rem', color: theme.textSecondary, lineHeight: '1.4' }}>
+                                Se guardó en la cola y se actualizará en la base de datos cuando haya conexión a internet.
+                            </p>
+                        </div>
+                    )}
+                    {!selectedWord.isOfflineDict && (selectedWord.fromCache || (!selectedWord.fromCache && !isDetailedMode)) && (
                         <div style={{ 
                             background: 'rgba(255, 159, 10, 0.05)',
                             border: '1px dashed rgba(255, 159, 10, 0.25)',
@@ -3403,6 +3953,7 @@ function App() {
       <style>{`
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
         @keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
+        @keyframes slideDown { from { transform: translate(-50%, -20px); opacity: 0; } to { transform: translate(-50%, 0); opacity: 1; } }
         .icon-btn { background: none; border: none; padding: 0; cursor: pointer; display: flex; align-items: center; justify-content: center; color: white; outline: none; transition: opacity 0.2s; }
         .icon-btn:hover { opacity: 0.7; }
         .icon-btn-player { background: none; border: none; color: white; cursor: pointer; outline: none; opacity: 0.9; transition: opacity 0.2s; }

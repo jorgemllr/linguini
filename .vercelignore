@@ -3,6 +3,7 @@
 *.opus
 *.wav
 *.txt
+!requirements.txt
 scratch/
 books/
 node_modules/

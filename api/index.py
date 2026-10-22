@@ -4,6 +4,8 @@ import os
 import sys
 from pathlib import Path
 import uuid
+import requests
+import json
 
 # Asegurar que el directorio de este archivo esté en sys.path para que Vercel
 # pueda resolver 'database' (que está en la misma carpeta que index.py)
@@ -54,32 +56,43 @@ CORS(app, resources={r"/api/*": {"origins": "*"}})
 if not IS_VERCEL:
     init_db()
 
-_openai_client = None
-_gemini_client = None
+def call_openai_analyze(prompt):
+    api_key = os.getenv("OPENAI_API_KEY")
+    if not api_key:
+        return None
+    url = "https://api.openai.com/v1/chat/completions"
+    headers = {
+        "Authorization": f"Bearer {api_key}",
+        "Content-Type": "application/json"
+    }
+    payload = {
+        "model": "gpt-4o-mini",
+        "response_format": {"type": "json_object"},
+        "messages": [
+            {"role": "system", "content": "You are an expert language tutor. Output valid JSON."},
+            {"role": "user", "content": prompt}
+        ]
+    }
+    resp = requests.post(url, headers=headers, json=payload, timeout=25)
+    resp.raise_for_status()
+    data = resp.json()
+    return json.loads(data["choices"][0]["message"]["content"])
 
-def get_openai_client():
-    global _openai_client
-    if _openai_client is None:
-        openai_api_key = os.getenv("OPENAI_API_KEY")
-        if openai_api_key:
-            try:
-                from openai import OpenAI
-                _openai_client = OpenAI(api_key=openai_api_key)
-            except Exception as e:
-                print(f"❌ Error al inicializar cliente de OpenAI: {e}")
-    return _openai_client
-
-def get_gemini_client():
-    global _gemini_client
-    if _gemini_client is None:
-        gemini_api_key = os.getenv("GEMINI_API_KEY")
-        if gemini_api_key:
-            try:
-                from google import genai
-                _gemini_client = genai.Client(api_key=gemini_api_key)
-            except Exception as e:
-                print(f"❌ Error al inicializar cliente de Gemini: {e}")
-    return _gemini_client
+def call_gemini_analyze(prompt):
+    api_key = os.getenv("GEMINI_API_KEY")
+    if not api_key:
+        return None
+    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={api_key}"
+    headers = {"Content-Type": "application/json"}
+    payload = {
+        "contents": [{"parts": [{"text": prompt}]}],
+        "generationConfig": {"response_mime_type": "application/json"}
+    }
+    resp = requests.post(url, headers=headers, json=payload, timeout=25)
+    resp.raise_for_status()
+    data = resp.json()
+    text = data["candidates"][0]["content"]["parts"][0]["text"]
+    return json.loads(text)
 
 # Ruta de diagnóstico para verificar variables de entorno en Vercel
 @app.route('/api/hello', methods=['GET'])
@@ -616,46 +629,28 @@ def analyze_word():
            - El segundo ejemplo: Si la palabra tiene otras acepciones importantes que cambian drásticamente su significado según el contexto, este segundo ejemplo DEBE ilustrar ese uso alternativo y contrastante. Si la palabra es simple o su significado casi no cambia, el segundo ejemplo simplemente debe ilustrar otro uso común del significado principal.
         """
 
-    openai_client = get_openai_client()
-    # 1. Intentar usar OpenAI como cliente principal (más rápido y de menor consumo con gpt-4o-mini)
-    if openai_client:
+    # 1. Intentar usar OpenAI como cliente principal (gpt-4o-mini via API directa)
+    if os.getenv("OPENAI_API_KEY"):
         print(f"🤖 OpenAI analizando palabra: {word}...")
         try:
-            response = openai_client.chat.completions.create(
-                model="gpt-4o-mini",
-                response_format={"type": "json_object"},
-                messages=[
-                    {"role": "system", "content": "You are a language tutor. Output JSON."},
-                    {"role": "user", "content": prompt}
-                ]
-            )
-            import json
-            content = response.choices[0].message.content
-            return jsonify(json.loads(content))
+            result = call_openai_analyze(prompt)
+            if result:
+                return jsonify(result)
         except Exception as openai_err:
             print(f"❌ Error en OpenAI, intentando fallback a Gemini: {openai_err}")
-            # Si falla, continuará abajo e intentará Gemini
 
-    gemini_client = get_gemini_client()
-    # 2. Fallback a Gemini si está configurado
-    if gemini_client:
+    # 2. Fallback a Gemini (gemini-2.5-flash via API directa)
+    if os.getenv("GEMINI_API_KEY"):
         print(f"🤖 Gemini (fallback) analizando palabra: {word}...")
         try:
-            from google.genai import types
-            response = gemini_client.models.generate_content(
-                model='gemini-2.5-flash',
-                contents=prompt,
-                config=types.GenerateContentConfig(
-                    response_mime_type="application/json"
-                )
-            )
-            import json
-            return jsonify(json.loads(response.text))
+            result = call_gemini_analyze(prompt)
+            if result:
+                return jsonify(result)
         except Exception as gemini_err:
             print(f"❌ Error en Gemini: {gemini_err}")
             return jsonify({"error": f"Error en Gemini: {str(gemini_err)}"}), 500
 
-    return jsonify({"error": "No se encontró ningún cliente de IA activo (Gemini u OpenAI). Configura tus claves en 'frontend/.env'"}), 500
+    return jsonify({"error": "No se encontró ningún cliente de IA activo (Gemini u OpenAI). Configura tus claves en .env"}), 500
 
 # --- ESCÁNER AUTOMÁTICO DE LIBROS PARA OBSIDIAN/SYNCTHING ---
 

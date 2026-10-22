@@ -11,7 +11,7 @@ export default defineConfig({
       manifest: {
         name: 'Linguini',
         short_name: 'Linguini',
-        description: 'Lector inteligente de idiomas',
+        description: 'Intelligent language reader',
         theme_color: '#ffffff',
         background_color: '#ffffff',
         display: 'standalone',
@@ -32,5 +32,13 @@ export default defineConfig({
         ]
       } 
     })
-  ]
+  ],
+  server: {
+    proxy: {
+      '/api': {
+        target: 'http://127.0.0.1:5000',
+        changeOrigin: true
+      }
+    }
+  }
 })

@@ -11,7 +11,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from database import (
     init_db, get_all_documents, insert_document, get_cached_word,
-    insert_cached_word, delete_cached_word, update_document, update_document_progress,
+    insert_cached_word, delete_cached_word, update_document, delete_document, update_document_progress,
     download_from_storage, delete_from_storage, get_public_storage_url
 )
 
@@ -132,16 +132,28 @@ def save_document():
 def update_document_route(doc_id):
     try:
         data = request.json
+        title = data.get('title')
         content = data.get('content')
         audio_url = data.get('audio_url')
         
-        if content is None and audio_url is None:
-            return jsonify({"error": "Faltan parámetros 'content' o 'audio_url'."}), 400
+        if title is None and content is None and audio_url is None:
+            return jsonify({"error": "Faltan parámetros 'title', 'content' o 'audio_url'."}), 400
             
-        result = update_document(doc_id, content=content, audio_url=audio_url)
+        result = update_document(doc_id, title=title, content=content, audio_url=audio_url)
         return jsonify(result)
     except Exception as e:
         print(f"❌ Error al actualizar documento: {e}")
+        return jsonify({"error": str(e)}), 500
+
+@app.route('/api/documents/<doc_id>', methods=['DELETE'])
+def delete_document_route(doc_id):
+    try:
+        success = delete_document(doc_id)
+        if success:
+            return jsonify({"success": True, "id": doc_id})
+        return jsonify({"error": "No se pudo eliminar el documento de Supabase"}), 500
+    except Exception as e:
+        print(f"❌ Error al eliminar documento: {e}")
         return jsonify({"error": str(e)}), 500
 
 @app.route('/api/documents/<doc_id>/progress', methods=['PUT'])
@@ -226,6 +238,7 @@ def process_storage_pdf():
         data = request.json
         storage_path = data.get('storage_path')  # ej. "pdfs/mybook.pdf"
         filename = data.get('filename')
+        title = data.get('title')
         language = data.get('language', 'en')
 
         if not storage_path or not filename:
@@ -291,7 +304,8 @@ def process_storage_pdf():
 
         words_list = ", ".join([h["word"] for h in highlights])
         final_content = "\n\n".join(full_text_pages) + "\n---\n" + words_list
-        doc_title = f"Subrayados: {filename}"
+        clean_fallback = filename.rsplit('.', 1)[0] if filename else "Documento"
+        doc_title = title.strip() if title and title.strip() else clean_fallback
         doc_id = str(uuid.uuid4())
         saved_doc = insert_document(doc_id, doc_title, final_content, language)
 

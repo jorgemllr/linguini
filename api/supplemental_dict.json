@@ -1,0 +1,4370 @@
+{
+  "words": {
+    "bank": {
+      "es": "banco",
+      "grammar": "noun",
+      "alternatives": [
+        "orilla (de río)"
+      ],
+      "examples": [
+        {
+          "original": "I need to go to the bank.",
+          "es_translation": "Necesito ir al banco."
+        },
+        {
+          "original": "They sat on the river bank.",
+          "es_translation": "Se sentaron en la orilla del río."
+        }
+      ]
+    },
+    "swim": {
+      "es": "nadar",
+      "grammar": "verb",
+      "alternatives": [],
+      "examples": [
+        {
+          "original": "I love to swim in the ocean.",
+          "es_translation": "Me encanta nadar en el océano."
+        }
+      ]
+    },
+    "wading": {
+      "es": "vadeando",
+      "grammar": "verb",
+      "alternatives": [
+        "caminando por el agua"
+      ],
+      "examples": [
+        {
+          "original": "The children were wading in the shallow stream.",
+          "es_translation": "Los niños estaban vadeando en el arroyo poco profundo."
+        }
+      ]
+    },
+    "wade": {
+      "es": "vadear",
+      "grammar": "verb",
+      "alternatives": [
+        "caminar por el agua"
+      ],
+      "examples": [
+        {
+          "original": "He had to wade through the mud.",
+          "es_translation": "Tuvo que vadear por el barro."
+        }
+      ]
+    },
+    "swirl": {
+      "es": "remolino",
+      "grammar": "noun",
+      "alternatives": [
+        "girar",
+        "arremolinarse"
+      ],
+      "examples": [
+        {
+          "original": "The water formed a swirl in the drain.",
+          "es_translation": "El agua formó un remolino en el desagüe."
+        },
+        {
+          "original": "Leaves swirled around his feet.",
+          "es_translation": "Las hojas giraron alrededor de sus pies."
+        }
+      ]
+    },
+    "creek": {
+      "es": "arroyo",
+      "grammar": "noun",
+      "alternatives": [
+        "riachuelo"
+      ],
+      "examples": [
+        {
+          "original": "We often play by the creek.",
+          "es_translation": "A menudo jugamos junto al arroyo."
+        }
+      ]
+    },
+    "her": {
+      "es": "ella",
+      "grammar": "pronoun",
+      "alternatives": [
+        "la",
+        "le",
+        "su"
+      ],
+      "examples": [
+        {
+          "original": "I saw her at the park.",
+          "es_translation": "La vi en el parque."
+        },
+        {
+          "original": "This is her book.",
+          "es_translation": "Este es su libro."
+        }
+      ]
+    },
+    "him": {
+      "es": "él",
+      "grammar": "pronoun",
+      "alternatives": [
+        "lo",
+        "le"
+      ],
+      "examples": [
+        {
+          "original": "I gave him the gift.",
+          "es_translation": "Le di el regalo."
+        },
+        {
+          "original": "She likes him very much.",
+          "es_translation": "Ella le gusta mucho."
+        }
+      ]
+    },
+    "into": {
+      "es": "en",
+      "grammar": "preposition",
+      "alternatives": [
+        "a",
+        "dentro de"
+      ],
+      "examples": [
+        {
+          "original": "He walked into the room.",
+          "es_translation": "Entró en la habitación."
+        }
+      ]
+    },
+    "them": {
+      "es": "ellos",
+      "grammar": "pronoun",
+      "alternatives": [
+        "ellas",
+        "los",
+        "las",
+        "les"
+      ],
+      "examples": [
+        {
+          "original": "I saw them leaving.",
+          "es_translation": "Los vi irse."
+        },
+        {
+          "original": "Give the books to them.",
+          "es_translation": "Dales los libros a ellos."
+        }
+      ]
+    },
+    "these": {
+      "es": "estos",
+      "grammar": "determiner/pronoun",
+      "alternatives": [
+        "estas"
+      ],
+      "examples": [
+        {
+          "original": "These shoes are new.",
+          "es_translation": "Estos zapatos son nuevos."
+        },
+        {
+          "original": "I want these.",
+          "es_translation": "Quiero estos."
+        }
+      ]
+    },
+    "since": {
+      "es": "desde",
+      "grammar": "preposition/conjunction/adverb",
+      "alternatives": [
+        "ya que",
+        "puesto que",
+        "hace"
+      ],
+      "examples": [
+        {
+          "original": "I haven't seen her since last week.",
+          "es_translation": "No la he visto desde la semana pasada."
+        },
+        {
+          "original": "Since it's raining, we should stay inside.",
+          "es_translation": "Ya que está lloviendo, deberíamos quedarnos dentro."
+        }
+      ]
+    },
+    "himself": {
+      "es": "él mismo",
+      "grammar": "pronoun",
+      "alternatives": [
+        "se"
+      ],
+      "examples": [
+        {
+          "original": "He cooked dinner himself.",
+          "es_translation": "Él mismo preparó la cena."
+        },
+        {
+          "original": "He hurt himself playing soccer.",
+          "es_translation": "Se lastimó jugando al fútbol."
+        }
+      ]
+    },
+    "upon": {
+      "es": "sobre",
+      "grammar": "preposition",
+      "alternatives": [
+        "en",
+        "encima de"
+      ],
+      "examples": [
+        {
+          "original": "Once upon a time there was a king.",
+          "es_translation": "Érase una vez un rey."
+        },
+        {
+          "original": "He placed the tray upon the table.",
+          "es_translation": "Puso la bandeja sobre la mesa."
+        }
+      ]
+    },
+    "though": {
+      "es": "aunque",
+      "grammar": "conjunction/adverb",
+      "alternatives": [
+        "sin embargo",
+        "a pesar de que"
+      ],
+      "examples": [
+        {
+          "original": "Though it was late, he continued working.",
+          "es_translation": "Aunque era tarde, él siguió trabajando."
+        },
+        {
+          "original": "She seemed tired, I didn't ask her, though.",
+          "es_translation": "Parecía cansada, sin embargo, no le pregunté."
+        }
+      ]
+    },
+    "toward": {
+      "es": "hacia",
+      "grammar": "preposition",
+      "alternatives": [
+        "para",
+        "en dirección a"
+      ],
+      "examples": [
+        {
+          "original": "He walked toward the exit.",
+          "es_translation": "Caminó hacia la salida."
+        }
+      ]
+    },
+    "per": {
+      "es": "por",
+      "grammar": "preposition",
+      "alternatives": [
+        "cada"
+      ],
+      "examples": [
+        {
+          "original": "The speed limit is 100 kilometers per hour.",
+          "es_translation": "El límite de velocidad es de 100 kilómetros por hora."
+        }
+      ]
+    },
+    "along": {
+      "es": "a lo largo de",
+      "grammar": "preposition/adverb",
+      "alternatives": [
+        "con",
+        "adelante"
+      ],
+      "examples": [
+        {
+          "original": "We walked along the beach.",
+          "es_translation": "Caminamos a lo largo de la playa."
+        },
+        {
+          "original": "Come along, we're leaving!",
+          "es_translation": "¡Ven, nos vamos!"
+        }
+      ]
+    },
+    "least": {
+      "es": "menos",
+      "grammar": "adjective/adverb/noun",
+      "alternatives": [
+        "mínimo"
+      ],
+      "examples": [
+        {
+          "original": "This is the least expensive option.",
+          "es_translation": "Esta es la opción menos cara."
+        },
+        {
+          "original": "At least we tried.",
+          "es_translation": "Al menos lo intentamos."
+        }
+      ]
+    },
+    "itself": {
+      "es": "sí mismo",
+      "grammar": "pronoun",
+      "alternatives": [
+        "se"
+      ],
+      "examples": [
+        {
+          "original": "The problem solved itself.",
+          "es_translation": "El problema se resolvió solo."
+        },
+        {
+          "original": "The city itself is a work of art.",
+          "es_translation": "La ciudad en sí es una obra de arte."
+        }
+      ]
+    },
+    "either": {
+      "es": "cualquiera",
+      "grammar": "determiner/pronoun/conjunction/adverb",
+      "alternatives": [
+        "o",
+        "tampoco"
+      ],
+      "examples": [
+        {
+          "original": "You can choose either option.",
+          "es_translation": "Puedes elegir cualquiera de las dos opciones."
+        },
+        {
+          "original": "I don't like it either.",
+          "es_translation": "A mí tampoco me gusta."
+        }
+      ]
+    },
+    "quite": {
+      "es": "bastante",
+      "grammar": "adverb",
+      "alternatives": [
+        "completamente",
+        "realmente"
+      ],
+      "examples": [
+        {
+          "original": "It's quite cold outside.",
+          "es_translation": "Hace bastante frío fuera."
+        },
+        {
+          "original": "I'm quite sure about that.",
+          "es_translation": "Estoy completamente seguro de eso."
+        }
+      ]
+    },
+    "anything": {
+      "es": "algo",
+      "grammar": "pronoun",
+      "alternatives": [
+        "cualquier cosa",
+        "nada (en negación)"
+      ],
+      "examples": [
+        {
+          "original": "Do you need anything?",
+          "es_translation": "¿Necesitas algo?"
+        },
+        {
+          "original": "I didn't see anything suspicious.",
+          "es_translation": "No vi nada sospechoso."
+        }
+      ]
+    },
+    "themselves": {
+      "es": "ellos mismos",
+      "grammar": "pronoun",
+      "alternatives": [
+        "ellas mismas",
+        "se"
+      ],
+      "examples": [
+        {
+          "original": "They built the house themselves.",
+          "es_translation": "Ellos mismos construyeron la casa."
+        },
+        {
+          "original": "They enjoyed themselves at the party.",
+          "es_translation": "Se divirtieron en la fiesta."
+        }
+      ]
+    },
+    "shall": {
+      "es": "deber",
+      "grammar": "modal verb",
+      "alternatives": [],
+      "examples": [
+        {
+          "original": "You shall obey the rules.",
+          "es_translation": "Debes obedecer las reglas."
+        },
+        {
+          "original": "I shall return tomorrow.",
+          "es_translation": "Regresaré mañana."
+        }
+      ]
+    },
+    "cannot": {
+      "es": "no poder",
+      "grammar": "modal verb",
+      "alternatives": [],
+      "examples": [
+        {
+          "original": "I cannot help you right now.",
+          "es_translation": "No puedo ayudarte ahora mismo."
+        }
+      ]
+    },
+    "beyond": {
+      "es": "más allá de",
+      "grammar": "preposition/adverb",
+      "alternatives": [
+        "aparte de"
+      ],
+      "examples": [
+        {
+          "original": "The house is beyond those trees.",
+          "es_translation": "La casa está más allá de esos árboles."
+        },
+        {
+          "original": "It's beyond my comprehension.",
+          "es_translation": "Está más allá de mi comprensión."
+        }
+      ]
+    },
+    "instead": {
+      "es": "en su lugar",
+      "grammar": "adverb",
+      "alternatives": [
+        "en cambio",
+        "más bien"
+      ],
+      "examples": [
+        {
+          "original": "I'll have water instead of juice.",
+          "es_translation": "Tomaré agua en lugar de jugo."
+        },
+        {
+          "original": "He didn't complain; instead, he helped.",
+          "es_translation": "No se quejó; en cambio, ayudó."
+        }
+      ]
+    },
+    "actually": {
+      "es": "en realidad",
+      "grammar": "adverb",
+      "alternatives": [
+        "de hecho",
+        "verdaderamente"
+      ],
+      "examples": [
+        {
+          "original": "What actually happened?",
+          "es_translation": "¿Qué pasó en realidad?"
+        },
+        {
+          "original": "He actually did it.",
+          "es_translation": "De hecho, lo hizo."
+        }
+      ]
+    },
+    "sort": {
+      "es": "tipo",
+      "grammar": "noun",
+      "alternatives": [
+        "clase",
+        "ordenar"
+      ],
+      "examples": [
+        {
+          "original": "What sort of music do you like?",
+          "es_translation": "¿Qué tipo de música te gusta?"
+        },
+        {
+          "original": "Please sort these documents.",
+          "es_translation": "Por favor, ordena estos documentos."
+        }
+      ]
+    },
+    "indeed": {
+      "es": "de hecho",
+      "grammar": "adverb",
+      "alternatives": [
+        "en verdad",
+        "ciertamente"
+      ],
+      "examples": [
+        {
+          "original": "It was a very good meal indeed.",
+          "es_translation": "Fue una comida muy buena, de hecho."
+        },
+        {
+          "original": "Is he coming? Indeed.",
+          "es_translation": "¿Viene? Ciertamente."
+        }
+      ]
+    },
+    "hall": {
+      "es": "sala",
+      "grammar": "noun",
+      "alternatives": [
+        "pasillo",
+        "vestíbulo"
+      ],
+      "examples": [
+        {
+          "original": "The banquet hall was beautifully decorated.",
+          "es_translation": "La sala de banquetes estaba hermosamente decorada."
+        },
+        {
+          "original": "He walked down the hall.",
+          "es_translation": "Caminó por el pasillo."
+        }
+      ]
+    },
+    "throughout": {
+      "es": "por todo",
+      "grammar": "preposition/adverb",
+      "alternatives": [
+        "a lo largo de",
+        "durante todo"
+      ],
+      "examples": [
+        {
+          "original": "The news spread throughout the country.",
+          "es_translation": "La noticia se extendió por todo el país."
+        },
+        {
+          "original": "He was consistent throughout his career.",
+          "es_translation": "Fue constante a lo largo de su carrera."
+        }
+      ]
+    },
+    "myself": {
+      "es": "yo mismo",
+      "grammar": "pronoun",
+      "alternatives": [
+        "me"
+      ],
+      "examples": [
+        {
+          "original": "I saw myself in the mirror.",
+          "es_translation": "Me vi en el espejo."
+        },
+        {
+          "original": "I can do it myself.",
+          "es_translation": "Puedo hacerlo yo mismo."
+        }
+      ]
+    },
+    "latter": {
+      "es": "este último",
+      "grammar": "adjective/noun",
+      "alternatives": [
+        "la última",
+        "el segundo"
+      ],
+      "examples": [
+        {
+          "original": "Between the two options, I prefer the latter.",
+          "es_translation": "Entre las dos opciones, prefiero la última."
+        }
+      ]
+    },
+    "whatever": {
+      "es": "lo que sea",
+      "grammar": "pronoun/determiner/adverb",
+      "alternatives": [
+        "cualquier cosa que",
+        "no importa qué"
+      ],
+      "examples": [
+        {
+          "original": "Do whatever you want.",
+          "es_translation": "Haz lo que quieras."
+        },
+        {
+          "original": "Whatever happens, we will be ready.",
+          "es_translation": "Pase lo que pase, estaremos listos."
+        }
+      ]
+    },
+    "corps": {
+      "es": "cuerpo",
+      "grammar": "noun",
+      "alternatives": [
+        "unidad"
+      ],
+      "examples": [
+        {
+          "original": "The Marine Corps is a branch of the military.",
+          "es_translation": "El Cuerpo de Marines es una rama del ejército."
+        }
+      ]
+    },
+    "afternoon": {
+      "es": "tarde",
+      "grammar": "noun",
+      "alternatives": [],
+      "examples": [
+        {
+          "original": "I will see you this afternoon.",
+          "es_translation": "Te veré esta tarde."
+        }
+      ]
+    },
+    "teeth": {
+      "es": "dientes",
+      "grammar": "noun",
+      "alternatives": [],
+      "examples": [
+        {
+          "original": "Brush your teeth twice a day.",
+          "es_translation": "Cepíllate los dientes dos veces al día."
+        }
+      ]
+    },
+    "unless": {
+      "es": "a menos que",
+      "grammar": "conjunction",
+      "alternatives": [
+        "a no ser que",
+        "excepto si"
+      ],
+      "examples": [
+        {
+          "original": "I won't go unless you come with me.",
+          "es_translation": "No iré a menos que vengas conmigo."
+        }
+      ]
+    },
+    "jazz": {
+      "es": "jazz",
+      "grammar": "noun",
+      "alternatives": [],
+      "examples": [
+        {
+          "original": "She loves listening to jazz music.",
+          "es_translation": "A ella le encanta escuchar música jazz."
+        }
+      ]
+    },
+    "everyone": {
+      "es": "todos",
+      "grammar": "pronoun",
+      "alternatives": [
+        "todo el mundo"
+      ],
+      "examples": [
+        {
+          "original": "Everyone needs to sign the document.",
+          "es_translation": "Todos deben firmar el documento."
+        }
+      ]
+    },
+    "clothes": {
+      "es": "ropa",
+      "grammar": "noun",
+      "alternatives": [
+        "prendas"
+      ],
+      "examples": [
+        {
+          "original": "She bought new clothes for the trip.",
+          "es_translation": "Ella compró ropa nueva para el viaje."
+        }
+      ]
+    },
+    "otherwise": {
+      "es": "de lo contrario",
+      "grammar": "adverb/conjunction",
+      "alternatives": [
+        "si no",
+        "por lo demás"
+      ],
+      "examples": [
+        {
+          "original": "You must leave now, otherwise you will miss the train.",
+          "es_translation": "Debes irte ahora, de lo contrario perderás el tren."
+        },
+        {
+          "original": "He was quiet, but otherwise seemed fine.",
+          "es_translation": "Estaba callado, pero por lo demás parecía bien."
+        }
+      ]
+    },
+    "personnel": {
+      "es": "personal",
+      "grammar": "noun",
+      "alternatives": [
+        "empleados"
+      ],
+      "examples": [
+        {
+          "original": "All personnel must wear identification badges.",
+          "es_translation": "Todo el personal debe usar insignias de identificación."
+        }
+      ]
+    },
+    "plus": {
+      "es": "más",
+      "grammar": "preposition/conjunction/noun/adjective",
+      "alternatives": [
+        "además",
+        "y"
+      ],
+      "examples": [
+        {
+          "original": "Two plus two equals four.",
+          "es_translation": "Dos más dos son cuatro."
+        },
+        {
+          "original": "The weather was cold, plus it was raining.",
+          "es_translation": "El tiempo era frío, además estaba lloviendo."
+        }
+      ]
+    },
+    "everybody": {
+      "es": "todos",
+      "grammar": "pronoun",
+      "alternatives": [
+        "todo el mundo"
+      ],
+      "examples": [
+        {
+          "original": "Everybody enjoyed the party.",
+          "es_translation": "Todo el mundo disfrutó de la fiesta."
+        }
+      ]
+    },
+    "somehow": {
+      "es": "de alguna manera",
+      "grammar": "adverb",
+      "alternatives": [
+        "de algún modo",
+        "por algún motivo"
+      ],
+      "examples": [
+        {
+          "original": "We'll manage to finish it somehow.",
+          "es_translation": "Conseguiremos terminarlo de alguna manera."
+        }
+      ]
+    },
+    "upper": {
+      "es": "superior",
+      "grammar": "adjective",
+      "alternatives": [
+        "de arriba"
+      ],
+      "examples": [
+        {
+          "original": "We live on the upper floor.",
+          "es_translation": "Vivimos en el piso superior."
+        }
+      ]
+    },
+    "forth": {
+      "es": "adelante",
+      "grammar": "adverb",
+      "alternatives": [],
+      "examples": [
+        {
+          "original": "From that day forth, he changed his life.",
+          "es_translation": "Desde ese día en adelante, cambió su vida."
+        },
+        {
+          "original": "The boat rocked back and forth.",
+          "es_translation": "El bote se mecía de un lado a otro."
+        }
+      ]
+    },
+    "realize": {
+      "es": "darse cuenta de",
+      "grammar": "verb",
+      "alternatives": [
+        "comprender",
+        "percatarse de"
+      ],
+      "examples": [
+        {
+          "original": "I didn't realize how late it was.",
+          "es_translation": "No me di cuenta de lo tarde que era."
+        }
+      ]
+    },
+    "weather": {
+      "es": "tiempo",
+      "grammar": "noun",
+      "alternatives": [
+        "clima"
+      ],
+      "examples": [
+        {
+          "original": "The weather is beautiful today.",
+          "es_translation": "El tiempo está hermoso hoy."
+        }
+      ]
+    },
+    "largely": {
+      "es": "en gran parte",
+      "grammar": "adverb",
+      "alternatives": [
+        "mayormente",
+        "principalmente"
+      ],
+      "examples": [
+        {
+          "original": "The success was largely due to his efforts.",
+          "es_translation": "El éxito se debió en gran parte a sus esfuerzos."
+        }
+      ]
+    },
+    "ought": {
+      "es": "deber",
+      "grammar": "modal verb",
+      "alternatives": [],
+      "examples": [
+        {
+          "original": "You ought to be more careful.",
+          "es_translation": "Deberías ser más cuidadoso."
+        }
+      ]
+    },
+    "chairman": {
+      "es": "presidente",
+      "grammar": "noun",
+      "alternatives": [
+        "presidente del consejo"
+      ],
+      "examples": [
+        {
+          "original": "The chairman addressed the board members.",
+          "es_translation": "El presidente se dirigió a los miembros de la junta."
+        }
+      ]
+    },
+    "yourself": {
+      "es": "tú mismo",
+      "grammar": "pronoun",
+      "alternatives": [
+        "usted mismo",
+        "te",
+        "se"
+      ],
+      "examples": [
+        {
+          "original": "Did you build it yourself?",
+          "es_translation": "¿Lo construiste tú mismo?"
+        },
+        {
+          "original": "Help yourself to some cake.",
+          "es_translation": "Sírvete un poco de pastel."
+        }
+      ]
+    },
+    "ourselves": {
+      "es": "nosotros mismos",
+      "grammar": "pronoun",
+      "alternatives": [
+        "nosotras mismas",
+        "nos"
+      ],
+      "examples": [
+        {
+          "original": "We cooked the entire meal ourselves.",
+          "es_translation": "Nosotros mismos cocinamos toda la comida."
+        },
+        {
+          "original": "We enjoyed ourselves at the concert.",
+          "es_translation": "Nos divertimos en el concierto."
+        }
+      ]
+    },
+    "fellow": {
+      "es": "compañero",
+      "grammar": "noun/adjective",
+      "alternatives": [
+        "tipo",
+        "individuo",
+        "colega"
+      ],
+      "examples": [
+        {
+          "original": "He's a nice fellow.",
+          "es_translation": "Es un buen tipo."
+        },
+        {
+          "original": "My fellow students agree.",
+          "es_translation": "Mis compañeros de estudio están de acuerdo."
+        }
+      ]
+    },
+    "greatly": {
+      "es": "en gran medida",
+      "grammar": "adverb",
+      "alternatives": [
+        "mucho",
+        "enormemente",
+        "considerablemente"
+      ],
+      "examples": [
+        {
+          "original": "I greatly appreciate your assistance.",
+          "es_translation": "Aprecio enormemente su ayuda."
+        }
+      ]
+    },
+    "onto": {
+      "es": "sobre",
+      "grammar": "preposition",
+      "alternatives": [
+        "encima de",
+        "hacia"
+      ],
+      "examples": [
+        {
+          "original": "He climbed onto the roof.",
+          "es_translation": "Él subió al tejado."
+        },
+        {
+          "original": "Move the boxes onto the shelf.",
+          "es_translation": "Mueve las cajas al estante."
+        }
+      ]
+    },
+    "somewhere": {
+      "es": "en algún lugar",
+      "grammar": "adverb",
+      "alternatives": [
+        "a algún lugar"
+      ],
+      "examples": [
+        {
+          "original": "I left my keys somewhere in the house.",
+          "es_translation": "Dejé mis llaves en algún lugar de la casa."
+        }
+      ]
+    },
+    "plenty": {
+      "es": "mucho",
+      "grammar": "determiner/pronoun/adverb",
+      "alternatives": [
+        "un montón",
+        "bastante",
+        "abundancia"
+      ],
+      "examples": [
+        {
+          "original": "We have plenty of food for everyone.",
+          "es_translation": "Tenemos mucha comida para todos."
+        },
+        {
+          "original": "There's plenty to do.",
+          "es_translation": "Hay mucho que hacer."
+        }
+      ]
+    },
+    "inner": {
+      "es": "interno",
+      "grammar": "adjective",
+      "alternatives": [
+        "interior"
+      ],
+      "examples": [
+        {
+          "original": "She found her inner peace.",
+          "es_translation": "Ella encontró su paz interior."
+        },
+        {
+          "original": "The inner workings of the clock are complex.",
+          "es_translation": "El funcionamiento interno del reloj es complejo."
+        }
+      ]
+    },
+    "forget": {
+      "es": "olvidar",
+      "grammar": "verb",
+      "alternatives": [
+        "olvidarse de"
+      ],
+      "examples": [
+        {
+          "original": "Don't forget your keys.",
+          "es_translation": "No olvides tus llaves."
+        }
+      ]
+    },
+    "percent": {
+      "es": "por ciento",
+      "grammar": "noun",
+      "alternatives": [
+        "porcentaje"
+      ],
+      "examples": [
+        {
+          "original": "Ten percent of the population.",
+          "es_translation": "Diez por ciento de la población."
+        }
+      ]
+    },
+    "wooden": {
+      "es": "de madera",
+      "grammar": "adjective",
+      "alternatives": [
+        "leñoso"
+      ],
+      "examples": [
+        {
+          "original": "A wooden table.",
+          "es_translation": "Una mesa de madera."
+        }
+      ]
+    },
+    "depends": {
+      "es": "depende",
+      "grammar": "verb",
+      "alternatives": [],
+      "examples": [
+        {
+          "original": "It depends on the weather.",
+          "es_translation": "Depende del tiempo."
+        }
+      ]
+    },
+    "till": {
+      "es": "hasta",
+      "grammar": "conjunction",
+      "alternatives": [
+        "hasta que"
+      ],
+      "examples": [
+        {
+          "original": "Wait till tomorrow.",
+          "es_translation": "Espera hasta mañana."
+        }
+      ]
+    },
+    "partly": {
+      "es": "parcialmente",
+      "grammar": "adverb",
+      "alternatives": [
+        "en parte"
+      ],
+      "examples": [
+        {
+          "original": "The sky was partly cloudy.",
+          "es_translation": "El cielo estaba parcialmente nublado."
+        }
+      ]
+    },
+    "everywhere": {
+      "es": "por todas partes",
+      "grammar": "adverb",
+      "alternatives": [
+        "en todas partes"
+      ],
+      "examples": [
+        {
+          "original": "He looked everywhere for his dog.",
+          "es_translation": "Buscó por todas partes a su perro."
+        }
+      ]
+    },
+    "anyway": {
+      "es": "de todos modos",
+      "grammar": "adverb",
+      "alternatives": [
+        "en cualquier caso",
+        "sea como sea"
+      ],
+      "examples": [
+        {
+          "original": "It was raining, but we went out anyway.",
+          "es_translation": "Estaba lloviendo, pero salimos de todos modos."
+        }
+      ]
+    },
+    "liberty": {
+      "es": "libertad",
+      "grammar": "noun",
+      "alternatives": [],
+      "examples": [
+        {
+          "original": "The statue of liberty.",
+          "es_translation": "La estatua de la libertad."
+        }
+      ]
+    },
+    "depend": {
+      "es": "depender",
+      "grammar": "verb",
+      "alternatives": [],
+      "examples": [
+        {
+          "original": "Our plans depend on the weather.",
+          "es_translation": "Nuestros planes dependen del tiempo."
+        }
+      ]
+    },
+    "elsewhere": {
+      "es": "en otro lugar",
+      "grammar": "adverb",
+      "alternatives": [
+        "en otra parte"
+      ],
+      "examples": [
+        {
+          "original": "We should look elsewhere.",
+          "es_translation": "Deberíamos buscar en otro lugar."
+        }
+      ]
+    },
+    "bureau": {
+      "es": "oficina",
+      "grammar": "noun",
+      "alternatives": [
+        "departamento",
+        "cómoda"
+      ],
+      "examples": [
+        {
+          "original": "The Federal Bureau of Investigation.",
+          "es_translation": "La Oficina Federal de Investigación."
+        }
+      ]
+    },
+    "readily": {
+      "es": "fácilmente",
+      "grammar": "adverb",
+      "alternatives": [
+        "con facilidad",
+        "prontamente"
+      ],
+      "examples": [
+        {
+          "original": "He readily agreed to help.",
+          "es_translation": "Accedió fácilmente a ayudar."
+        }
+      ]
+    },
+    "unlike": {
+      "es": "a diferencia de",
+      "grammar": "preposition",
+      "alternatives": [
+        "distinto de"
+      ],
+      "examples": [
+        {
+          "original": "Unlike his brother, he is very shy.",
+          "es_translation": "A diferencia de su hermano, él es muy tímido."
+        }
+      ]
+    },
+    "anybody": {
+      "es": "cualquiera",
+      "grammar": "pronoun",
+      "alternatives": [
+        "alguien"
+      ],
+      "examples": [
+        {
+          "original": "Anybody can do that.",
+          "es_translation": "Cualquiera puede hacer eso."
+        }
+      ]
+    },
+    "afford": {
+      "es": "permitirse",
+      "grammar": "verb",
+      "alternatives": [
+        "poder permitirse"
+      ],
+      "examples": [
+        {
+          "original": "I can't afford a new car.",
+          "es_translation": "No puedo permitirme un coche nuevo."
+        }
+      ]
+    },
+    "papa": {
+      "es": "papá",
+      "grammar": "noun",
+      "alternatives": [
+        "padre"
+      ],
+      "examples": [
+        {
+          "original": "My papa told me a story.",
+          "es_translation": "Mi papá me contó una historia."
+        }
+      ]
+    },
+    "anywhere": {
+      "es": "en cualquier lugar",
+      "grammar": "adverb",
+      "alternatives": [
+        "a cualquier parte"
+      ],
+      "examples": [
+        {
+          "original": "You can sit anywhere.",
+          "es_translation": "Puedes sentarte en cualquier lugar."
+        }
+      ]
+    },
+    "allotment": {
+      "es": "asignación",
+      "grammar": "noun",
+      "alternatives": [
+        "reparto",
+        "parcela"
+      ],
+      "examples": [
+        {
+          "original": "Each student received an allotment of supplies.",
+          "es_translation": "Cada estudiante recibió una asignación de suministros."
+        }
+      ]
+    },
+    "mankind": {
+      "es": "la humanidad",
+      "grammar": "noun",
+      "alternatives": [
+        "el género humano"
+      ],
+      "examples": [
+        {
+          "original": "A great step for mankind.",
+          "es_translation": "Un gran paso para la humanidad."
+        }
+      ]
+    },
+    "furthermore": {
+      "es": "además",
+      "grammar": "adverb",
+      "alternatives": [
+        "es más",
+        "por otra parte"
+      ],
+      "examples": [
+        {
+          "original": "It's too expensive; furthermore, it's not very good.",
+          "es_translation": "Es demasiado caro; además, no es muy bueno."
+        }
+      ]
+    },
+    "tonight": {
+      "es": "esta noche",
+      "grammar": "adverb",
+      "alternatives": [],
+      "examples": [
+        {
+          "original": "Are you busy tonight?",
+          "es_translation": "¿Estás ocupado esta noche?"
+        }
+      ]
+    },
+    "regardless": {
+      "es": "sin importar",
+      "grammar": "adverb",
+      "alternatives": [
+        "a pesar de",
+        "de todos modos"
+      ],
+      "examples": [
+        {
+          "original": "We will go, regardless of the weather.",
+          "es_translation": "Iremos, sin importar el tiempo."
+        }
+      ]
+    },
+    "onset": {
+      "es": "inicio",
+      "grammar": "noun",
+      "alternatives": [
+        "comienzo",
+        "aparición"
+      ],
+      "examples": [
+        {
+          "original": "The onset of winter.",
+          "es_translation": "El inicio del invierno."
+        }
+      ]
+    },
+    "supper": {
+      "es": "cena",
+      "grammar": "noun",
+      "alternatives": [],
+      "examples": [
+        {
+          "original": "What's for supper?",
+          "es_translation": "¿Qué hay para cenar?"
+        }
+      ]
+    },
+    "scientists": {
+      "es": "científicos",
+      "grammar": "noun",
+      "alternatives": [],
+      "examples": [
+        {
+          "original": "Scientists are studying the phenomenon.",
+          "es_translation": "Los científicos están estudiando el fenómeno."
+        }
+      ]
+    },
+    "sympathetic": {
+      "es": "compasivo",
+      "grammar": "adjective",
+      "alternatives": [
+        "solidario",
+        "comprensivo"
+      ],
+      "examples": [
+        {
+          "original": "He was very sympathetic to her problems.",
+          "es_translation": "Él fue muy compasivo con sus problemas."
+        }
+      ]
+    },
+    "presently": {
+      "es": "actualmente",
+      "grammar": "adverb",
+      "alternatives": [
+        "en la actualidad",
+        "en breve"
+      ],
+      "examples": [
+        {
+          "original": "He is presently working on a new project.",
+          "es_translation": "Actualmente está trabajando en un nuevo proyecto."
+        }
+      ]
+    },
+    "output": {
+      "es": "producción",
+      "grammar": "noun",
+      "alternatives": [
+        "rendimiento",
+        "salida"
+      ],
+      "examples": [
+        {
+          "original": "The factory's output increased.",
+          "es_translation": "La producción de la fábrica aumentó."
+        }
+      ]
+    },
+    "golf": {
+      "es": "golf",
+      "grammar": "noun",
+      "alternatives": [],
+      "examples": [
+        {
+          "original": "Do you play golf?",
+          "es_translation": "¿Juegas al golf?"
+        }
+      ]
+    },
+    "thereby": {
+      "es": "de ese modo",
+      "grammar": "adverb",
+      "alternatives": [
+        "así",
+        "con ello"
+      ],
+      "examples": [
+        {
+          "original": "He saved money, thereby reducing his debt.",
+          "es_translation": "Ahorró dinero, de ese modo reduciendo su deuda."
+        }
+      ]
+    },
+    "seldom": {
+      "es": "rara vez",
+      "grammar": "adverb",
+      "alternatives": [
+        "pocas veces"
+      ],
+      "examples": [
+        {
+          "original": "He seldom visits his family.",
+          "es_translation": "Rara vez visita a su familia."
+        }
+      ]
+    },
+    "namely": {
+      "es": "es decir",
+      "grammar": "adverb",
+      "alternatives": [
+        "a saber",
+        "en otras palabras"
+      ],
+      "examples": [
+        {
+          "original": "There are two main issues, namely, time and money.",
+          "es_translation": "Hay dos problemas principales, es decir, el tiempo y el dinero."
+        }
+      ]
+    },
+    "depending": {
+      "es": "dependiendo",
+      "grammar": "verb (present participle)",
+      "alternatives": [],
+      "examples": [
+        {
+          "original": "Depending on the situation, we might change our plans.",
+          "es_translation": "Dependiendo de la situación, podríamos cambiar nuestros planes."
+        }
+      ]
+    },
+    "farther": {
+      "es": "más lejos",
+      "grammar": "adverb",
+      "alternatives": [
+        "más distante"
+      ],
+      "examples": [
+        {
+          "original": "Can you throw it farther?",
+          "es_translation": "¿Puedes lanzarlo más lejos?"
+        }
+      ]
+    },
+    "fallout": {
+      "es": "consecuencias",
+      "grammar": "noun",
+      "alternatives": [
+        "precipitación radiactiva",
+        "residuo"
+      ],
+      "examples": [
+        {
+          "original": "The economic fallout of the crisis was severe.",
+          "es_translation": "Las consecuencias económicas de la crisis fueron graves."
+        },
+        {
+          "original": "Nuclear fallout can affect the environment for decades.",
+          "es_translation": "La precipitación nuclear puede afectar el medio ambiente durante décadas."
+        }
+      ]
+    },
+    "studio": {
+      "es": "estudio",
+      "grammar": "noun",
+      "alternatives": [],
+      "examples": [
+        {
+          "original": "They recorded the song in a professional studio.",
+          "es_translation": "Grabaron la canción en un estudio profesional."
+        },
+        {
+          "original": "The artist has a painting studio at home.",
+          "es_translation": "El artista tiene un estudio de pintura en casa."
+        }
+      ]
+    },
+    "beef": {
+      "es": "carne de res",
+      "grammar": "noun",
+      "alternatives": [
+        "ternera",
+        "res"
+      ],
+      "examples": [
+        {
+          "original": "We had roast beef for dinner.",
+          "es_translation": "Cenamos rosbif."
+        },
+        {
+          "original": "What's your beef with him?",
+          "es_translation": "¿Cuál es tu problema con él?"
+        }
+      ]
+    },
+    "nowhere": {
+      "es": "en ninguna parte",
+      "grammar": "adverb",
+      "alternatives": [
+        "a ningún sitio",
+        "ningún lugar"
+      ],
+      "examples": [
+        {
+          "original": "There's nowhere to hide.",
+          "es_translation": "No hay dónde esconderse."
+        },
+        {
+          "original": "He came out of nowhere.",
+          "es_translation": "Salió de la nada."
+        }
+      ]
+    },
+    "altogether": {
+      "es": "completamente",
+      "grammar": "adverb",
+      "alternatives": [
+        "en total",
+        "totalmente",
+        "enteramente"
+      ],
+      "examples": [
+        {
+          "original": "It was an altogether different situation.",
+          "es_translation": "Era una situación completamente diferente."
+        },
+        {
+          "original": "There were ten people altogether.",
+          "es_translation": "Había diez personas en total."
+        }
+      ]
+    },
+    "testament": {
+      "es": "testamento",
+      "grammar": "noun",
+      "alternatives": [
+        "legado"
+      ],
+      "examples": [
+        {
+          "original": "His will was his last testament.",
+          "es_translation": "Su testamento fue su última voluntad."
+        },
+        {
+          "original": "The building stands as a testament to their skill.",
+          "es_translation": "El edificio es un testimonio de su habilidad."
+        }
+      ]
+    },
+    "prestige": {
+      "es": "prestigio",
+      "grammar": "noun",
+      "alternatives": [
+        "renombre"
+      ],
+      "examples": [
+        {
+          "original": "The company enjoys great prestige in the industry.",
+          "es_translation": "La empresa goza de gran prestigio en la industria."
+        }
+      ]
+    },
+    "santa": {
+      "es": "santa",
+      "grammar": "noun",
+      "alternatives": [
+        "santo"
+      ],
+      "examples": [
+        {
+          "original": "Saint Anne is a revered figure.",
+          "es_translation": "Santa Ana es una figura venerada."
+        }
+      ]
+    },
+    "utterly": {
+      "es": "completamente",
+      "grammar": "adverb",
+      "alternatives": [
+        "totalmente",
+        "absolutamente"
+      ],
+      "examples": [
+        {
+          "original": "He was utterly exhausted.",
+          "es_translation": "Estaba completamente agotado."
+        }
+      ]
+    },
+    "outdoor": {
+      "es": "al aire libre",
+      "grammar": "adjective",
+      "alternatives": [
+        "exterior"
+      ],
+      "examples": [
+        {
+          "original": "We enjoy outdoor activities.",
+          "es_translation": "Disfrutamos de actividades al aire libre."
+        },
+        {
+          "original": "The outdoor market is very popular.",
+          "es_translation": "El mercado al aire libre es muy popular."
+        }
+      ]
+    },
+    "pursuant": {
+      "es": "de conformidad con",
+      "grammar": "preposition",
+      "alternatives": [
+        "según",
+        "conforme a"
+      ],
+      "examples": [
+        {
+          "original": "Pursuant to our agreement, we will proceed.",
+          "es_translation": "De conformidad con nuestro acuerdo, procederemos."
+        }
+      ]
+    },
+    "delightful": {
+      "es": "encantador",
+      "grammar": "adjective",
+      "alternatives": [
+        "delicioso",
+        "agradable"
+      ],
+      "examples": [
+        {
+          "original": "What a delightful surprise!",
+          "es_translation": "¡Qué sorpresa tan encantadora!"
+        },
+        {
+          "original": "The weather was absolutely delightful.",
+          "es_translation": "El clima fue absolutamente delicioso."
+        }
+      ]
+    },
+    "zen": {
+      "es": "zen",
+      "grammar": "noun",
+      "alternatives": [],
+      "examples": [
+        {
+          "original": "He practices Zen meditation.",
+          "es_translation": "Él practica la meditación Zen."
+        }
+      ]
+    },
+    "velocity": {
+      "es": "velocidad",
+      "grammar": "noun",
+      "alternatives": [],
+      "examples": [
+        {
+          "original": "The car reached a high velocity.",
+          "es_translation": "El coche alcanzó una gran velocidad."
+        }
+      ]
+    },
+    "gyro": {
+      "es": "giroscopio",
+      "grammar": "noun",
+      "alternatives": [],
+      "examples": [
+        {
+          "original": "A smartphone typically contains a gyro for orientation.",
+          "es_translation": "Un smartphone típicamente contiene un giroscopio para la orientación."
+        }
+      ]
+    },
+    "ward": {
+      "es": "sala",
+      "grammar": "noun",
+      "alternatives": [
+        "pupilo",
+        "distrito",
+        "barrio"
+      ],
+      "examples": [
+        {
+          "original": "The patient was moved to the surgical ward.",
+          "es_translation": "El paciente fue trasladado a la sala de cirugía."
+        },
+        {
+          "original": "He was a ward of the state.",
+          "es_translation": "Era un pupilo del estado."
+        }
+      ]
+    },
+    "grateful": {
+      "es": "agradecido",
+      "grammar": "adjective",
+      "alternatives": [
+        "reconocido"
+      ],
+      "examples": [
+        {
+          "original": "I'm truly grateful for your help.",
+          "es_translation": "Estoy realmente agradecido por tu ayuda."
+        }
+      ]
+    },
+    "mason": {
+      "es": "masón",
+      "grammar": "noun",
+      "alternatives": [
+        "albañil"
+      ],
+      "examples": [
+        {
+          "original": "He is a master mason.",
+          "es_translation": "Él es un maestro masón."
+        },
+        {
+          "original": "The stonemason built the wall.",
+          "es_translation": "El albañil construyó el muro de piedra."
+        }
+      ]
+    },
+    "wholly": {
+      "es": "completamente",
+      "grammar": "adverb",
+      "alternatives": [
+        "enteramente",
+        "totalmente"
+      ],
+      "examples": [
+        {
+          "original": "Her decision was not wholly unexpected.",
+          "es_translation": "Su decisión no fue del todo inesperada."
+        },
+        {
+          "original": "He was wholly dedicated to his work.",
+          "es_translation": "Estaba completamente dedicado a su trabajo."
+        }
+      ]
+    },
+    "meaningful": {
+      "es": "significativo",
+      "grammar": "adjective",
+      "alternatives": [
+        "con sentido",
+        "relevante"
+      ],
+      "examples": [
+        {
+          "original": "They had a meaningful conversation.",
+          "es_translation": "Tuvieron una conversación significativa."
+        },
+        {
+          "original": "It was a meaningful experience for her.",
+          "es_translation": "Fue una experiencia con sentido para ella."
+        }
+      ]
+    },
+    "sitter": {
+      "es": "niñera",
+      "grammar": "noun",
+      "alternatives": [
+        "modelo",
+        "cuidador"
+      ],
+      "examples": [
+        {
+          "original": "We hired a sitter for the evening.",
+          "es_translation": "Contratamos a una niñera para la noche."
+        },
+        {
+          "original": "The artist's sitter posed for hours.",
+          "es_translation": "El modelo del artista posó durante horas."
+        }
+      ]
+    },
+    "luncheon": {
+      "es": "almuerzo",
+      "grammar": "noun",
+      "alternatives": [
+        "comida ligera"
+      ],
+      "examples": [
+        {
+          "original": "They attended a formal luncheon.",
+          "es_translation": "Asistieron a un almuerzo formal."
+        },
+        {
+          "original": "The charity hosted a luncheon to raise funds.",
+          "es_translation": "La organización benéfica organizó un almuerzo para recaudar fondos."
+        }
+      ]
+    },
+    "ultimately": {
+      "es": "finalmente",
+      "grammar": "adverb",
+      "alternatives": [
+        "en última instancia",
+        "a fin de cuentas"
+      ],
+      "examples": [
+        {
+          "original": "Ultimately, it was his decision.",
+          "es_translation": "Finalmente, fue su decisión."
+        },
+        {
+          "original": "Ultimately, we want to achieve peace.",
+          "es_translation": "En última instancia, queremos lograr la paz."
+        }
+      ]
+    },
+    "whisky": {
+      "es": "whisky",
+      "grammar": "noun",
+      "alternatives": [],
+      "examples": [
+        {
+          "original": "He ordered a glass of whisky.",
+          "es_translation": "Pidió un vaso de whisky."
+        },
+        {
+          "original": "Whisky is a strong alcoholic drink.",
+          "es_translation": "El whisky es una bebida alcohólica fuerte."
+        }
+      ]
+    },
+    "deck": {
+      "es": "cubierta",
+      "grammar": "noun",
+      "alternatives": [
+        "terraza",
+        "mazo"
+      ],
+      "examples": [
+        {
+          "original": "The ship's deck was wet.",
+          "es_translation": "La cubierta del barco estaba mojada."
+        },
+        {
+          "original": "We sat on the deck and enjoyed the view.",
+          "es_translation": "Nos sentamos en la terraza y disfrutamos de la vista."
+        }
+      ]
+    },
+    "capitol": {
+      "es": "capitolio",
+      "grammar": "noun",
+      "alternatives": [],
+      "examples": [
+        {
+          "original": "The U.S. Capitol is in Washington D.C.",
+          "es_translation": "El Capitolio de EE. UU. está en Washington D.C."
+        },
+        {
+          "original": "They protested outside the capitol building.",
+          "es_translation": "Protestaron frente al edificio del capitolio."
+        }
+      ]
+    },
+    "auto": {
+      "es": "auto",
+      "grammar": "noun",
+      "alternatives": [
+        "coche",
+        "automóvil"
+      ],
+      "examples": [
+        {
+          "original": "He bought a new auto.",
+          "es_translation": "Compró un auto nuevo."
+        },
+        {
+          "original": "The auto industry is very competitive.",
+          "es_translation": "La industria automotriz es muy competitiva."
+        }
+      ]
+    },
+    "chiefly": {
+      "es": "principalmente",
+      "grammar": "adverb",
+      "alternatives": [
+        "sobre todo",
+        "mayoritariamente"
+      ],
+      "examples": [
+        {
+          "original": "He is chiefly known for his paintings.",
+          "es_translation": "Es conocido principalmente por sus pinturas."
+        },
+        {
+          "original": "The diet consists chiefly of fruits and vegetables.",
+          "es_translation": "La dieta consiste sobre todo en frutas y verduras."
+        }
+      ]
+    },
+    "merger": {
+      "es": "fusión",
+      "grammar": "noun",
+      "alternatives": [],
+      "examples": [
+        {
+          "original": "The two companies announced a merger.",
+          "es_translation": "Las dos empresas anunciaron una fusión."
+        },
+        {
+          "original": "The merger created a larger entity.",
+          "es_translation": "La fusión creó una entidad más grande."
+        }
+      ]
+    },
+    "unlikely": {
+      "es": "improbable",
+      "grammar": "adjective",
+      "alternatives": [
+        "poco probable",
+        "difícil"
+      ],
+      "examples": [
+        {
+          "original": "It's unlikely that he will come.",
+          "es_translation": "Es improbable que venga."
+        },
+        {
+          "original": "An unlikely hero emerged from the crowd.",
+          "es_translation": "Un héroe improbable surgió de la multitud."
+        }
+      ]
+    },
+    "behalf": {
+      "es": "nombre",
+      "grammar": "noun",
+      "alternatives": [
+        "representación"
+      ],
+      "examples": [
+        {
+          "original": "On behalf of the company, I thank you.",
+          "es_translation": "En nombre de la empresa, les doy las gracias."
+        },
+        {
+          "original": "He spoke on behalf of the victims.",
+          "es_translation": "Habló en representación de las víctimas."
+        }
+      ]
+    },
+    "prairie": {
+      "es": "pradera",
+      "grammar": "noun",
+      "alternatives": [
+        "llanura",
+        "pastizal"
+      ],
+      "examples": [
+        {
+          "original": "Buffalo roamed the vast prairies.",
+          "es_translation": "Los búfalos deambulaban por las vastas praderas."
+        },
+        {
+          "original": "The house stood alone on the prairie.",
+          "es_translation": "La casa estaba sola en la pradera."
+        }
+      ]
+    },
+    "commodities": {
+      "es": "productos básicos",
+      "grammar": "noun",
+      "alternatives": [
+        "mercancías",
+        "materias primas"
+      ],
+      "examples": [
+        {
+          "original": "Oil and gold are considered commodities.",
+          "es_translation": "El petróleo y el oro se consideran productos básicos."
+        },
+        {
+          "original": "The price of commodities fluctuates daily.",
+          "es_translation": "El precio de las mercancías fluctúa diariamente."
+        }
+      ]
+    },
+    "envelope": {
+      "es": "sobre",
+      "grammar": "noun",
+      "alternatives": [],
+      "examples": [
+        {
+          "original": "She sealed the letter in an envelope.",
+          "es_translation": "Selló la carta en un sobre."
+        },
+        {
+          "original": "Please put the money in this envelope.",
+          "es_translation": "Por favor, pon el dinero en este sobre."
+        }
+      ]
+    },
+    "disposal": {
+      "es": "eliminación",
+      "grammar": "noun",
+      "alternatives": [
+        "desecho",
+        "disposición"
+      ],
+      "examples": [
+        {
+          "original": "Waste disposal is a major environmental issue.",
+          "es_translation": "La eliminación de residuos es un problema ambiental importante."
+        },
+        {
+          "original": "The old furniture is at your disposal.",
+          "es_translation": "Los muebles viejos están a su disposición."
+        }
+      ]
+    },
+    "assessors": {
+      "es": "tasadores",
+      "grammar": "noun",
+      "alternatives": [
+        "evaluadores",
+        "asesores"
+      ],
+      "examples": [
+        {
+          "original": "The assessors determined the value of the property.",
+          "es_translation": "Los tasadores determinaron el valor de la propiedad."
+        },
+        {
+          "original": "Tax assessors visit homes to calculate property taxes.",
+          "es_translation": "Los asesores fiscales visitan las casas para calcular los impuestos sobre la propiedad."
+        }
+      ]
+    },
+    "thereafter": {
+      "es": "después",
+      "grammar": "adverb",
+      "alternatives": [
+        "a partir de entonces",
+        "posteriormente"
+      ],
+      "examples": [
+        {
+          "original": "He graduated in 2000 and thereafter moved to London.",
+          "es_translation": "Se graduó en 2000 y después se mudó a Londres."
+        },
+        {
+          "original": "The initial phase was difficult; thereafter, things improved.",
+          "es_translation": "La fase inicial fue difícil; a partir de entonces, las cosas mejoraron."
+        }
+      ]
+    },
+    "cafe": {
+      "es": "cafetería",
+      "grammar": "noun",
+      "alternatives": [
+        "café"
+      ],
+      "examples": [
+        {
+          "original": "We met at the cafe for lunch.",
+          "es_translation": "Nos encontramos en la cafetería para almorzar."
+        },
+        {
+          "original": "She ordered a cup of black cafe.",
+          "es_translation": "Pidió una taza de café negro."
+        }
+      ]
+    },
+    "accordance": {
+      "es": "acuerdo",
+      "grammar": "noun",
+      "alternatives": [
+        "conformidad"
+      ],
+      "examples": [
+        {
+          "original": "The decision was made in accordance with the rules.",
+          "es_translation": "La decisión se tomó de acuerdo con las reglas."
+        },
+        {
+          "original": "He acted in accordance with his conscience.",
+          "es_translation": "Actuó de conformidad con su conciencia."
+        }
+      ]
+    },
+    "motives": {
+      "es": "motivos",
+      "grammar": "noun",
+      "alternatives": [
+        "razones",
+        "móviles"
+      ],
+      "examples": [
+        {
+          "original": "The police questioned his motives.",
+          "es_translation": "La policía cuestionó sus motivos."
+        },
+        {
+          "original": "What were her motives for doing that?",
+          "es_translation": "¿Cuáles fueron sus razones para hacer eso?"
+        }
+      ]
+    },
+    "anyhow": {
+      "es": "de todos modos",
+      "grammar": "adverb",
+      "alternatives": [
+        "de cualquier manera",
+        "en cualquier caso"
+      ],
+      "examples": [
+        {
+          "original": "It's too late now, but thanks anyhow.",
+          "es_translation": "Ya es demasiado tarde, pero gracias de todos modos."
+        },
+        {
+          "original": "I don't think it's important, but I'll check it anyhow.",
+          "es_translation": "No creo que sea importante, pero lo revisaré de cualquier manera."
+        }
+      ]
+    },
+    "peered": {
+      "es": "miró",
+      "grammar": "verb",
+      "alternatives": [
+        "se asomó",
+        "escudriñó"
+      ],
+      "examples": [
+        {
+          "original": "She peered through the keyhole.",
+          "es_translation": "Se asomó por la cerradura."
+        },
+        {
+          "original": "He peered at the small print.",
+          "es_translation": "Miró fijamente la letra pequeña."
+        }
+      ]
+    },
+    "nude": {
+      "es": "desnudo",
+      "grammar": "adjective",
+      "alternatives": [],
+      "examples": [
+        {
+          "original": "The artist painted a nude figure.",
+          "es_translation": "El artista pintó una figura desnuda."
+        },
+        {
+          "original": "She posed nude for the portrait.",
+          "es_translation": "Posó desnuda para el retrato."
+        }
+      ]
+    },
+    "whereby": {
+      "es": "mediante el cual",
+      "grammar": "conjunction",
+      "alternatives": [
+        "por el cual",
+        "a través del cual"
+      ],
+      "examples": [
+        {
+          "original": "They established a system whereby members could vote.",
+          "es_translation": "Establecieron un sistema mediante el cual los miembros podían votar."
+        },
+        {
+          "original": "This is the process whereby ideas become reality.",
+          "es_translation": "Este es el proceso por el cual las ideas se hacen realidad."
+        }
+      ]
+    },
+    "wiped": {
+      "es": "limpió",
+      "grammar": "verb",
+      "alternatives": [
+        "borró",
+        "secó"
+      ],
+      "examples": [
+        {
+          "original": "She wiped the table clean.",
+          "es_translation": "Limpió la mesa."
+        },
+        {
+          "original": "He wiped away a tear.",
+          "es_translation": "Se secó una lágrima."
+        }
+      ]
+    },
+    "rid": {
+      "es": "librarse de",
+      "grammar": "verb",
+      "alternatives": [
+        "deshacerse de",
+        "eliminar"
+      ],
+      "examples": [
+        {
+          "original": "I want to get rid of these old clothes.",
+          "es_translation": "Quiero deshacerme de esta ropa vieja."
+        },
+        {
+          "original": "They worked to rid the city of crime.",
+          "es_translation": "Trabajaron para librar a la ciudad del crimen."
+        }
+      ]
+    },
+    "earnings": {
+      "es": "ganancias",
+      "grammar": "noun",
+      "alternatives": [
+        "ingresos",
+        "beneficios"
+      ],
+      "examples": [
+        {
+          "original": "His earnings increased last year.",
+          "es_translation": "Sus ganancias aumentaron el año pasado."
+        },
+        {
+          "original": "Company earnings were higher than expected.",
+          "es_translation": "Los ingresos de la empresa fueron más altos de lo esperado."
+        }
+      ]
+    },
+    "realm": {
+      "es": "reino",
+      "grammar": "noun",
+      "alternatives": [
+        "ámbito",
+        "esfera",
+        "dominio"
+      ],
+      "examples": [
+        {
+          "original": "The king ruled over his realm.",
+          "es_translation": "El rey gobernó su reino."
+        },
+        {
+          "original": "This problem is beyond the realm of my expertise.",
+          "es_translation": "Este problema está fuera del ámbito de mi experiencia."
+        }
+      ]
+    },
+    "numerical": {
+      "es": "numérico",
+      "grammar": "adjective",
+      "alternatives": [],
+      "examples": [
+        {
+          "original": "The data is presented in numerical order.",
+          "es_translation": "Los datos se presentan en orden numérico."
+        },
+        {
+          "original": "He has excellent numerical skills.",
+          "es_translation": "Tiene excelentes habilidades numéricas."
+        }
+      ]
+    },
+    "realtors": {
+      "es": "agentes inmobiliarios",
+      "grammar": "noun",
+      "alternatives": [
+        "corredores de bienes raíces"
+      ],
+      "examples": [
+        {
+          "original": "We hired realtors to sell our house.",
+          "es_translation": "Contratamos agentes inmobiliarios para vender nuestra casa."
+        },
+        {
+          "original": "Realtors play a key role in the housing market.",
+          "es_translation": "Los agentes inmobiliarios juegan un papel clave en el mercado de la vivienda."
+        }
+      ]
+    },
+    "timber": {
+      "es": "madera",
+      "grammar": "noun",
+      "alternatives": [
+        "troncos",
+        "leña"
+      ],
+      "examples": [
+        {
+          "original": "The house was built with strong timber.",
+          "es_translation": "La casa fue construida con madera fuerte."
+        },
+        {
+          "original": "They are logging for timber in the forest.",
+          "es_translation": "Están talando árboles para obtener madera en el bosque."
+        }
+      ]
+    },
+    "reactivity": {
+      "es": "reactividad",
+      "grammar": "noun",
+      "alternatives": [],
+      "examples": [
+        {
+          "original": "The chemical showed high reactivity.",
+          "es_translation": "El químico mostró alta reactividad."
+        }
+      ]
+    },
+    "nonspecific": {
+      "es": "inespecífico",
+      "grammar": "adjective",
+      "alternatives": [],
+      "examples": [
+        {
+          "original": "The symptoms were nonspecific.",
+          "es_translation": "Los síntomas eran inespecíficos."
+        }
+      ]
+    },
+    "hunter": {
+      "es": "cazador",
+      "grammar": "noun",
+      "alternatives": [
+        "cazadora"
+      ],
+      "examples": [
+        {
+          "original": "The hunter tracked the deer through the forest.",
+          "es_translation": "El cazador siguió al ciervo por el bosque."
+        }
+      ]
+    },
+    "shrugged": {
+      "es": "se encogió de hombros",
+      "grammar": "verb",
+      "alternatives": [],
+      "examples": [
+        {
+          "original": "He shrugged his shoulders in response.",
+          "es_translation": "Se encogió de hombros en respuesta."
+        }
+      ]
+    },
+    "halfway": {
+      "es": "a mitad de camino",
+      "grammar": "adverb",
+      "alternatives": [
+        "a medio camino"
+      ],
+      "examples": [
+        {
+          "original": "They stopped halfway to their destination.",
+          "es_translation": "Se detuvieron a mitad de camino a su destino."
+        }
+      ]
+    },
+    "competence": {
+      "es": "competencia",
+      "grammar": "noun",
+      "alternatives": [],
+      "examples": [
+        {
+          "original": "She demonstrated great competence in her work.",
+          "es_translation": "Ella demostró gran competencia en su trabajo."
+        }
+      ]
+    },
+    "overnight": {
+      "es": "de la noche a la mañana",
+      "grammar": "adverb",
+      "alternatives": [
+        "durante la noche"
+      ],
+      "examples": [
+        {
+          "original": "The package arrived overnight.",
+          "es_translation": "El paquete llegó de la noche a la mañana."
+        }
+      ]
+    },
+    "parlor": {
+      "es": "salón",
+      "grammar": "noun",
+      "alternatives": [
+        "sala",
+        "sala de estar"
+      ],
+      "examples": [
+        {
+          "original": "We sat in the parlor and chatted.",
+          "es_translation": "Nos sentamos en el salón y charlamos."
+        }
+      ]
+    },
+    "fellows": {
+      "es": "compañeros",
+      "grammar": "noun",
+      "alternatives": [
+        "colegas"
+      ],
+      "examples": [
+        {
+          "original": "He spent time with his old fellows.",
+          "es_translation": "Pasó tiempo con sus viejos compañeros."
+        }
+      ]
+    },
+    "earnest": {
+      "es": "sincero",
+      "grammar": "adjective",
+      "alternatives": [
+        "serio",
+        "diligente"
+      ],
+      "examples": [
+        {
+          "original": "He made an earnest effort to succeed.",
+          "es_translation": "Hizo un esfuerzo sincero por tener éxito."
+        }
+      ]
+    },
+    "forgot": {
+      "es": "olvidó",
+      "grammar": "verb",
+      "alternatives": [],
+      "examples": [
+        {
+          "original": "She forgot her keys at home.",
+          "es_translation": "Olvidó sus llaves en casa."
+        }
+      ]
+    },
+    "scientist": {
+      "es": "científico",
+      "grammar": "noun",
+      "alternatives": [
+        "científica"
+      ],
+      "examples": [
+        {
+          "original": "The scientist conducted an experiment.",
+          "es_translation": "El científico realizó un experimento."
+        }
+      ]
+    },
+    "weary": {
+      "es": "cansado",
+      "grammar": "adjective",
+      "alternatives": [
+        "fatigado",
+        "exhausto"
+      ],
+      "examples": [
+        {
+          "original": "He felt weary after the long journey.",
+          "es_translation": "Se sentía cansado después del largo viaje."
+        }
+      ]
+    },
+    "tract": {
+      "es": "tracto",
+      "grammar": "noun",
+      "alternatives": [
+        "extensión",
+        "folleto"
+      ],
+      "examples": [
+        {
+          "original": "The intestinal tract is important for digestion.",
+          "es_translation": "El tracto intestinal es importante para la digestión."
+        },
+        {
+          "original": "They owned a large tract of land.",
+          "es_translation": "Poseían una gran extensión de tierra."
+        }
+      ]
+    },
+    "inability": {
+      "es": "incapacidad",
+      "grammar": "noun",
+      "alternatives": [],
+      "examples": [
+        {
+          "original": "His inability to speak French was a problem.",
+          "es_translation": "Su incapacidad para hablar francés fue un problema."
+        }
+      ]
+    },
+    "economics": {
+      "es": "economía",
+      "grammar": "noun",
+      "alternatives": [],
+      "examples": [
+        {
+          "original": "She studied economics at university.",
+          "es_translation": "Ella estudió economía en la universidad."
+        }
+      ]
+    },
+    "sooner": {
+      "es": "más pronto",
+      "grammar": "adverb",
+      "alternatives": [
+        "antes"
+      ],
+      "examples": [
+        {
+          "original": "The sooner, the better.",
+          "es_translation": "Cuanto antes, mejor."
+        }
+      ]
+    },
+    "lest": {
+      "es": "no sea que",
+      "grammar": "conjunction",
+      "alternatives": [
+        "para que no"
+      ],
+      "examples": [
+        {
+          "original": "He ran fast lest he miss the bus.",
+          "es_translation": "Corrió rápido no sea que perdiera el autobús."
+        }
+      ]
+    },
+    "pastor": {
+      "es": "pastor",
+      "grammar": "noun",
+      "alternatives": [],
+      "examples": [
+        {
+          "original": "The pastor delivered a sermon.",
+          "es_translation": "El pastor pronunció un sermón."
+        }
+      ]
+    },
+    "thee": {
+      "es": "tú",
+      "grammar": "pronoun",
+      "alternatives": [
+        "a ti",
+        "te"
+      ],
+      "examples": [
+        {
+          "original": "I give thee my word.",
+          "es_translation": "Te doy mi palabra."
+        }
+      ]
+    },
+    "whiskey": {
+      "es": "whisky",
+      "grammar": "noun",
+      "alternatives": [],
+      "examples": [
+        {
+          "original": "He ordered a glass of whiskey.",
+          "es_translation": "Pidió un vaso de whisky."
+        }
+      ]
+    },
+    "sunlight": {
+      "es": "luz del sol",
+      "grammar": "noun",
+      "alternatives": [
+        "luz solar"
+      ],
+      "examples": [
+        {
+          "original": "Plants need sunlight to grow.",
+          "es_translation": "Las plantas necesitan luz del sol para crecer."
+        }
+      ]
+    },
+    "frankfurter": {
+      "es": "salchicha de frankfurt",
+      "grammar": "noun",
+      "alternatives": [
+        "frankfurter"
+      ],
+      "examples": [
+        {
+          "original": "He ate a frankfurter with mustard.",
+          "es_translation": "Se comió una salchicha de frankfurt con mostaza."
+        }
+      ]
+    },
+    "transom": {
+      "es": "travesaño",
+      "grammar": "noun",
+      "alternatives": [
+        "lumbrera",
+        "espejo de popa"
+      ],
+      "examples": [
+        {
+          "original": "Light streamed through the transom above the door.",
+          "es_translation": "La luz entraba por la lumbrera encima de la puerta."
+        }
+      ]
+    },
+    "piazza": {
+      "es": "plaza",
+      "grammar": "noun",
+      "alternatives": [
+        "plazuela"
+      ],
+      "examples": [
+        {
+          "original": "We met in the main piazza of the town.",
+          "es_translation": "Nos encontramos en la plaza principal del pueblo."
+        }
+      ]
+    },
+    "thyroglobulin": {
+      "es": "tiroglobulina",
+      "grammar": "noun",
+      "alternatives": [],
+      "examples": [
+        {
+          "original": "Thyroglobulin is a protein produced by the thyroid gland.",
+          "es_translation": "La tiroglobulina es una proteína producida por la glándula tiroides."
+        }
+      ]
+    },
+    "costly": {
+      "es": "costoso",
+      "grammar": "adjective",
+      "alternatives": [
+        "caro",
+        "oneroso"
+      ],
+      "examples": [
+        {
+          "original": "The mistake proved to be very costly.",
+          "es_translation": "El error resultó ser muy costoso."
+        }
+      ]
+    },
+    "quest": {
+      "es": "búsqueda",
+      "grammar": "noun",
+      "alternatives": [
+        "misión",
+        "aventura"
+      ],
+      "examples": [
+        {
+          "original": "He embarked on a quest for knowledge.",
+          "es_translation": "Se embarcó en una búsqueda de conocimiento."
+        }
+      ]
+    },
+    "cherished": {
+      "es": "querido",
+      "grammar": "adjective",
+      "alternatives": [
+        "apreciado",
+        "atesorado"
+      ],
+      "examples": [
+        {
+          "original": "He held onto his cherished memories.",
+          "es_translation": "Se aferró a sus recuerdos queridos."
+        }
+      ]
+    },
+    "bass": {
+      "es": "bajo",
+      "grammar": "noun",
+      "alternatives": [
+        "lubina"
+      ],
+      "examples": [
+        {
+          "original": "The bass guitar played a steady rhythm.",
+          "es_translation": "El bajo tocó un ritmo constante."
+        },
+        {
+          "original": "He caught a large bass in the lake.",
+          "es_translation": "Atrapó una gran lubina en el lago."
+        }
+      ]
+    },
+    "afterward": {
+      "es": "después",
+      "grammar": "adverb",
+      "alternatives": [
+        "luego",
+        "posteriormente"
+      ],
+      "examples": [
+        {
+          "original": "They had dinner, and afterward, they went for a walk.",
+          "es_translation": "Cenaron, y después, salieron a caminar."
+        }
+      ]
+    },
+    "damp": {
+      "es": "húmedo",
+      "grammar": "adjective",
+      "alternatives": [
+        "mojado"
+      ],
+      "examples": [
+        {
+          "original": "The air was damp.",
+          "es_translation": "El aire estaba húmedo."
+        }
+      ]
+    },
+    "analytic": {
+      "es": "analítico",
+      "grammar": "adjective",
+      "alternatives": [],
+      "examples": [
+        {
+          "original": "She has an analytic mind.",
+          "es_translation": "Ella tiene una mente analítica."
+        }
+      ]
+    },
+    "abstraction": {
+      "es": "abstracción",
+      "grammar": "noun",
+      "alternatives": [],
+      "examples": [
+        {
+          "original": "The painting was an abstraction.",
+          "es_translation": "La pintura era una abstracción."
+        }
+      ]
+    },
+    "clover": {
+      "es": "trébol",
+      "grammar": "noun",
+      "alternatives": [],
+      "examples": [
+        {
+          "original": "He found a four-leaf clover.",
+          "es_translation": "Encontró un trébol de cuatro hojas."
+        }
+      ]
+    },
+    "secants": {
+      "es": "secantes",
+      "grammar": "noun",
+      "alternatives": [],
+      "examples": [
+        {
+          "original": "In geometry, secants can intersect a circle at two points.",
+          "es_translation": "En geometría, las secantes pueden intersectar un círculo en dos puntos."
+        }
+      ]
+    },
+    "roleplaying": {
+      "es": "juego de rol",
+      "grammar": "noun",
+      "alternatives": [
+        "rol"
+      ],
+      "examples": [
+        {
+          "original": "They enjoy roleplaying games.",
+          "es_translation": "Ellos disfrutan los juegos de rol."
+        }
+      ]
+    },
+    "operand": {
+      "es": "operando",
+      "grammar": "noun",
+      "alternatives": [],
+      "examples": [
+        {
+          "original": "In 'A + B', A and B are operands.",
+          "es_translation": "En 'A + B', A y B son operandos."
+        }
+      ]
+    },
+    "indispensable": {
+      "es": "indispensable",
+      "grammar": "adjective",
+      "alternatives": [
+        "esencial",
+        "imprescindible"
+      ],
+      "examples": [
+        {
+          "original": "This tool is indispensable for the job.",
+          "es_translation": "Esta herramienta es indispensable para el trabajo."
+        }
+      ]
+    },
+    "physician": {
+      "es": "médico",
+      "grammar": "noun",
+      "alternatives": [
+        "doctor",
+        "facultativo"
+      ],
+      "examples": [
+        {
+          "original": "She consulted a physician about her symptoms.",
+          "es_translation": "Ella consultó a un médico sobre sus síntomas."
+        }
+      ]
+    },
+    "ace": {
+      "es": "as",
+      "grammar": "noun",
+      "alternatives": [
+        "excelente"
+      ],
+      "examples": [
+        {
+          "original": "He served an ace in tennis.",
+          "es_translation": "Él hizo un as en tenis."
+        }
+      ]
+    },
+    "alongside": {
+      "es": "junto a",
+      "grammar": "preposition",
+      "alternatives": [
+        "al lado de"
+      ],
+      "examples": [
+        {
+          "original": "He walked alongside his friend.",
+          "es_translation": "Caminó junto a su amigo."
+        }
+      ]
+    },
+    "daylight": {
+      "es": "luz del día",
+      "grammar": "noun",
+      "alternatives": [
+        "luz diurna"
+      ],
+      "examples": [
+        {
+          "original": "We finished the work in broad daylight.",
+          "es_translation": "Terminamos el trabajo a plena luz del día."
+        }
+      ]
+    },
+    "businessmen": {
+      "es": "hombres de negocios",
+      "grammar": "noun",
+      "alternatives": [
+        "empresarios"
+      ],
+      "examples": [
+        {
+          "original": "The conference was attended by many businessmen.",
+          "es_translation": "A la conferencia asistieron muchos hombres de negocios."
+        }
+      ]
+    },
+    "onion": {
+      "es": "cebolla",
+      "grammar": "noun",
+      "alternatives": [],
+      "examples": [
+        {
+          "original": "She chopped an onion for the soup.",
+          "es_translation": "Cortó una cebolla para la sopa."
+        }
+      ]
+    },
+    "cease": {
+      "es": "cesar",
+      "grammar": "verb",
+      "alternatives": [
+        "parar",
+        "dejar de"
+      ],
+      "examples": [
+        {
+          "original": "The rain ceased for a moment.",
+          "es_translation": "La lluvia cesó por un momento."
+        }
+      ]
+    },
+    "turnpike": {
+      "es": "autopista de peaje",
+      "grammar": "noun",
+      "alternatives": [
+        "carretera de peaje"
+      ],
+      "examples": [
+        {
+          "original": "We took the turnpike to save time.",
+          "es_translation": "Tomamos la autopista de peaje para ahorrar tiempo."
+        }
+      ]
+    },
+    "remind": {
+      "es": "recordar",
+      "grammar": "verb",
+      "alternatives": [
+        "hacer recordar"
+      ],
+      "examples": [
+        {
+          "original": "Please remind me to call him.",
+          "es_translation": "Por favor, recuérdame que lo llame."
+        }
+      ]
+    },
+    "englishman": {
+      "es": "inglés",
+      "grammar": "noun",
+      "alternatives": [],
+      "examples": [
+        {
+          "original": "He is an englishman.",
+          "es_translation": "Él es un inglés."
+        }
+      ]
+    },
+    "tappet": {
+      "es": "taqué",
+      "grammar": "noun",
+      "alternatives": [
+        "botador"
+      ],
+      "examples": [
+        {
+          "original": "The engine's tappet needed adjustment.",
+          "es_translation": "El taqué del motor necesitaba ajuste."
+        }
+      ]
+    },
+    "battens": {
+      "es": "listones",
+      "grammar": "noun",
+      "alternatives": [
+        "tablillas"
+      ],
+      "examples": [
+        {
+          "original": "They nailed battens over the windows.",
+          "es_translation": "Clavaron listones sobre las ventanas."
+        }
+      ]
+    },
+    "doorway": {
+      "es": "entrada",
+      "grammar": "noun",
+      "alternatives": [
+        "umbral"
+      ],
+      "examples": [
+        {
+          "original": "He stood in the doorway.",
+          "es_translation": "Él se paró en la entrada."
+        }
+      ]
+    },
+    "homeric": {
+      "es": "homérico",
+      "grammar": "adjective",
+      "alternatives": [],
+      "examples": [
+        {
+          "original": "He described it with Homeric grandeur.",
+          "es_translation": "Lo describió con una grandeza homérica."
+        }
+      ]
+    },
+    "affixed": {
+      "es": "fijado",
+      "grammar": "verb",
+      "alternatives": [
+        "pegado",
+        "adjunto"
+      ],
+      "examples": [
+        {
+          "original": "The label was affixed to the package.",
+          "es_translation": "La etiqueta estaba fijada al paquete."
+        }
+      ]
+    },
+    "amid": {
+      "es": "en medio de",
+      "grammar": "preposition",
+      "alternatives": [
+        "entre"
+      ],
+      "examples": [
+        {
+          "original": "He stood amid the crowd.",
+          "es_translation": "Él estaba en medio de la multitud."
+        }
+      ]
+    },
+    "odds": {
+      "es": "probabilidades",
+      "grammar": "noun",
+      "alternatives": [
+        "posibilidades",
+        "desventaja"
+      ],
+      "examples": [
+        {
+          "original": "The odds of winning are low.",
+          "es_translation": "Las probabilidades de ganar son bajas."
+        }
+      ]
+    },
+    "driveway": {
+      "es": "entrada de coches",
+      "grammar": "noun",
+      "alternatives": [
+        "camino de entrada"
+      ],
+      "examples": [
+        {
+          "original": "The car was parked in the driveway.",
+          "es_translation": "El coche estaba aparcado en la entrada de coches."
+        }
+      ]
+    },
+    "chuck": {
+      "es": "lanzar",
+      "grammar": "verb",
+      "alternatives": [
+        "tirar",
+        "arrojar"
+      ],
+      "examples": [
+        {
+          "original": "Just chuck it in the bin.",
+          "es_translation": "Solo tíralo a la papelera."
+        }
+      ]
+    },
+    "pickup": {
+      "es": "camioneta",
+      "grammar": "noun",
+      "alternatives": [
+        "recogida"
+      ],
+      "examples": [
+        {
+          "original": "He bought a new pickup truck.",
+          "es_translation": "Compró una camioneta nueva."
+        }
+      ]
+    },
+    "monopoly": {
+      "es": "monopolio",
+      "grammar": "noun",
+      "alternatives": [],
+      "examples": [
+        {
+          "original": "The company has a monopoly on the market.",
+          "es_translation": "La empresa tiene un monopolio en el mercado."
+        }
+      ]
+    },
+    "intent": {
+      "es": "intención",
+      "grammar": "noun",
+      "alternatives": [
+        "propósito"
+      ],
+      "examples": [
+        {
+          "original": "His intent was clear.",
+          "es_translation": "Su intención era clara."
+        }
+      ]
+    },
+    "cannery": {
+      "es": "conservera",
+      "grammar": "noun",
+      "alternatives": [
+        "fábrica de conservas"
+      ],
+      "examples": [
+        {
+          "original": "The fish cannery processed tons of tuna.",
+          "es_translation": "La conservera de pescado procesó toneladas de atún."
+        }
+      ]
+    },
+    "congregational": {
+      "es": "congregacional",
+      "grammar": "adjective",
+      "alternatives": [],
+      "examples": [
+        {
+          "original": "They belong to a Congregational church.",
+          "es_translation": "Pertenecen a una iglesia congregacional."
+        }
+      ]
+    },
+    "vocal": {
+      "es": "vocal",
+      "grammar": "adjective",
+      "alternatives": [
+        "de voz"
+      ],
+      "examples": [
+        {
+          "original": "He has strong vocal cords.",
+          "es_translation": "Tiene cuerdas vocales fuertes."
+        }
+      ]
+    },
+    "usage": {
+      "es": "uso",
+      "grammar": "noun",
+      "alternatives": [
+        "utilización"
+      ],
+      "examples": [
+        {
+          "original": "The usage of this tool is restricted.",
+          "es_translation": "El uso de esta herramienta está restringido."
+        }
+      ]
+    },
+    "manpower": {
+      "es": "mano de obra",
+      "grammar": "noun",
+      "alternatives": [
+        "personal"
+      ],
+      "examples": [
+        {
+          "original": "They need more manpower for the project.",
+          "es_translation": "Necesitan más mano de obra para el proyecto."
+        }
+      ]
+    },
+    "stare": {
+      "es": "mirar fijamente",
+      "grammar": "verb",
+      "alternatives": [
+        "fijar la mirada"
+      ],
+      "examples": [
+        {
+          "original": "Don't stare at people.",
+          "es_translation": "No mires fijamente a la gente."
+        }
+      ]
+    },
+    "favorably": {
+      "es": "favorablemente",
+      "grammar": "adverb",
+      "alternatives": [
+        "ventajosamente"
+      ],
+      "examples": [
+        {
+          "original": "The proposal was received favorably.",
+          "es_translation": "La propuesta fue recibida favorablemente."
+        }
+      ]
+    },
+    "thoughtfully": {
+      "es": "pensativamente",
+      "grammar": "adverb",
+      "alternatives": [
+        "con consideración"
+      ],
+      "examples": [
+        {
+          "original": "She nodded thoughtfully.",
+          "es_translation": "Ella asintió pensativamente."
+        }
+      ]
+    },
+    "ultraviolet": {
+      "es": "ultravioleta",
+      "grammar": "adjective",
+      "alternatives": [],
+      "examples": [
+        {
+          "original": "Ultraviolet light can be harmful.",
+          "es_translation": "La luz ultravioleta puede ser dañina."
+        }
+      ]
+    },
+    "clung": {
+      "es": "se aferró",
+      "grammar": "verb",
+      "alternatives": [
+        "se agarró"
+      ],
+      "examples": [
+        {
+          "original": "The child clung to her mother's hand.",
+          "es_translation": "El niño se aferró a la mano de su madre."
+        }
+      ]
+    },
+    "couch": {
+      "es": "sofá",
+      "grammar": "noun",
+      "alternatives": [
+        "diván"
+      ],
+      "examples": [
+        {
+          "original": "The cat was sleeping on the couch.",
+          "es_translation": "El gato estaba durmiendo en el sofá."
+        }
+      ]
+    },
+    "stray": {
+      "es": "callejero",
+      "grammar": "adjective",
+      "alternatives": [
+        "extraviado",
+        "descarriado"
+      ],
+      "examples": [
+        {
+          "original": "A stray dog wandered into the garden.",
+          "es_translation": "Un perro callejero se metió en el jardín."
+        }
+      ]
+    },
+    "smoothly": {
+      "es": "suavemente",
+      "grammar": "adverb",
+      "alternatives": [
+        "sin problemas",
+        "con fluidez"
+      ],
+      "examples": [
+        {
+          "original": "The presentation went very smoothly.",
+          "es_translation": "La presentación salió muy suavemente."
+        }
+      ]
+    },
+    "foremost": {
+      "es": "principal",
+      "grammar": "adjective",
+      "alternatives": [
+        "preeminente",
+        "primordial"
+      ],
+      "examples": [
+        {
+          "original": "He is the foremost expert in this field.",
+          "es_translation": "Él es el experto principal en este campo."
+        }
+      ]
+    },
+    "fashionable": {
+      "es": "a la moda",
+      "grammar": "adjective",
+      "alternatives": [
+        "de moda",
+        "elegante"
+      ],
+      "examples": [
+        {
+          "original": "That store sells very fashionable clothes.",
+          "es_translation": "Esa tienda vende ropa muy a la moda."
+        }
+      ]
+    },
+    "saloon": {
+      "es": "salón",
+      "grammar": "noun",
+      "alternatives": [
+        "cantina",
+        "taberna"
+      ],
+      "examples": [
+        {
+          "original": "They met in the old western saloon.",
+          "es_translation": "Se encontraron en el viejo salón del oeste."
+        }
+      ]
+    },
+    "monsieur": {
+      "es": "señor",
+      "grammar": "noun",
+      "alternatives": [
+        "caballero"
+      ],
+      "examples": [
+        {
+          "original": "Monsieur Dubois greeted them at the door.",
+          "es_translation": "El señor Dubois los saludó en la puerta."
+        }
+      ]
+    },
+    "quaint": {
+      "es": "pintoresco",
+      "grammar": "adjective",
+      "alternatives": [
+        "singular",
+        "peculiar"
+      ],
+      "examples": [
+        {
+          "original": "The village had many quaint little shops.",
+          "es_translation": "El pueblo tenía muchas tiendecitas pintorescas."
+        }
+      ]
+    },
+    "someday": {
+      "es": "algún día",
+      "grammar": "adverb",
+      "alternatives": [
+        "alguna vez"
+      ],
+      "examples": [
+        {
+          "original": "Someday, I will travel the world.",
+          "es_translation": "Algún día, viajaré por el mundo."
+        }
+      ]
+    },
+    "thy": {
+      "es": "tu",
+      "grammar": "pronoun",
+      "alternatives": [
+        "vuestro"
+      ],
+      "examples": [
+        {
+          "original": "Give me thy hand.",
+          "es_translation": "Dame tu mano."
+        }
+      ]
+    },
+    "carryover": {
+      "es": "arrastre",
+      "grammar": "noun",
+      "alternatives": [
+        "remanente",
+        "saldo"
+      ],
+      "examples": [
+        {
+          "original": "There was a significant carryover of funds to the next fiscal year.",
+          "es_translation": "Hubo un arrastre significativo de fondos para el próximo año fiscal."
+        }
+      ]
+    },
+    "gaze": {
+      "es": "mirada",
+      "grammar": "noun",
+      "alternatives": [
+        "mirar fijamente"
+      ],
+      "examples": [
+        {
+          "original": "She held his gaze for a long moment.",
+          "es_translation": "Ella mantuvo su mirada por un largo momento."
+        }
+      ]
+    },
+    "stockade": {
+      "es": "empalizada",
+      "grammar": "noun",
+      "alternatives": [
+        "estacada"
+      ],
+      "examples": [
+        {
+          "original": "The fort was protected by a wooden stockade.",
+          "es_translation": "El fuerte estaba protegido por una empalizada de madera."
+        }
+      ]
+    },
+    "dill": {
+      "es": "eneldo",
+      "grammar": "noun",
+      "alternatives": [],
+      "examples": [
+        {
+          "original": "She seasoned the fish with fresh dill.",
+          "es_translation": "Ella sazonó el pescado con eneldo fresco."
+        }
+      ]
+    },
+    "unwed": {
+      "es": "soltero",
+      "grammar": "adjective",
+      "alternatives": [
+        "no casado"
+      ],
+      "examples": [
+        {
+          "original": "She remained unwed throughout her life.",
+          "es_translation": "Ella permaneció soltera durante toda su vida."
+        }
+      ]
+    },
+    "palazzo": {
+      "es": "palacio",
+      "grammar": "noun",
+      "alternatives": [
+        "mansión"
+      ],
+      "examples": [
+        {
+          "original": "The family lived in a magnificent palazzo in Venice.",
+          "es_translation": "La familia vivía en un magnífico palacio en Venecia."
+        }
+      ]
+    },
+    "attendant": {
+      "es": "asistente",
+      "grammar": "noun",
+      "alternatives": [
+        "acompañante",
+        "encargado"
+      ],
+      "examples": [
+        {
+          "original": "A flight attendant served the passengers drinks.",
+          "es_translation": "Una asistente de vuelo sirvió bebidas a los pasajeros."
+        }
+      ]
+    },
+    "metaphysics": {
+      "es": "metafísica",
+      "grammar": "noun",
+      "alternatives": [],
+      "examples": [
+        {
+          "original": "Philosophy often delves into questions of metaphysics.",
+          "es_translation": "La filosofía a menudo se adentra en cuestiones de metafísica."
+        }
+      ]
+    },
+    "dimly": {
+      "es": "tenuemente",
+      "grammar": "adverb",
+      "alternatives": [
+        "débilmente",
+        "oscuramente"
+      ],
+      "examples": [
+        {
+          "original": "The room was dimly lit by a single candle.",
+          "es_translation": "La habitación estaba tenuemente iluminada por una sola vela."
+        }
+      ]
+    },
+    "formulaic": {
+      "es": "formulaico",
+      "grammar": "adjective",
+      "alternatives": [
+        "estereotipado",
+        "formulista"
+      ],
+      "examples": [
+        {
+          "original": "His speeches are often quite formulaic and predictable.",
+          "es_translation": "Sus discursos son a menudo bastante formulaicos y predecibles."
+        }
+      ]
+    },
+    "kremlin": {
+      "es": "Kremlin",
+      "grammar": "noun",
+      "alternatives": [
+        "el Kremlin"
+      ],
+      "examples": [
+        {
+          "original": "The decision was made in the Kremlin.",
+          "es_translation": "La decisión se tomó en el Kremlin."
+        }
+      ]
+    },
+    "sometime": {
+      "es": "alguna vez",
+      "grammar": "adverb",
+      "alternatives": [
+        "en algún momento"
+      ],
+      "examples": [
+        {
+          "original": "Let's meet for coffee sometime next week.",
+          "es_translation": "Encontrémonos para tomar café alguna vez la próxima semana."
+        }
+      ]
+    },
+    "honeymoon": {
+      "es": "luna de miel",
+      "grammar": "noun",
+      "alternatives": [],
+      "examples": [
+        {
+          "original": "They went to Paris for their honeymoon.",
+          "es_translation": "Fueron a París para su luna de miel."
+        }
+      ]
+    },
+    "scriptures": {
+      "es": "escrituras",
+      "grammar": "noun",
+      "alternatives": [
+        "las Sagradas Escrituras"
+      ],
+      "examples": [
+        {
+          "original": "He spent hours studying the ancient scriptures.",
+          "es_translation": "Pasó horas estudiando las antiguas escrituras."
+        }
+      ]
+    },
+    "forthcoming": {
+      "es": "próximo",
+      "grammar": "adjective",
+      "alternatives": [
+        "venidero",
+        "inminente"
+      ],
+      "examples": [
+        {
+          "original": "The forthcoming elections are a major topic.",
+          "es_translation": "Las próximas elecciones son un tema importante."
+        }
+      ]
+    },
+    "orioles": {
+      "es": "oropéndolas",
+      "grammar": "noun",
+      "alternatives": [],
+      "examples": [
+        {
+          "original": "The orioles build elaborate hanging nests.",
+          "es_translation": "Las oropéndolas construyen nidos colgantes elaborados."
+        }
+      ]
+    },
+    "lengthy": {
+      "es": "largo",
+      "grammar": "adjective",
+      "alternatives": [
+        "extenso",
+        "prolongado"
+      ],
+      "examples": [
+        {
+          "original": "The meeting involved a lengthy discussion.",
+          "es_translation": "La reunión implicó una discusión larga."
+        }
+      ]
+    },
+    "presbyterian": {
+      "es": "presbiteriano",
+      "grammar": "adjective",
+      "alternatives": [
+        "presbiteriana"
+      ],
+      "examples": [
+        {
+          "original": "He belongs to the Presbyterian church.",
+          "es_translation": "Él pertenece a la iglesia presbiteriana."
+        }
+      ]
+    },
+    "freeman": {
+      "es": "hombre libre",
+      "grammar": "noun",
+      "alternatives": [],
+      "examples": [
+        {
+          "original": "In ancient societies, a freeman had more rights.",
+          "es_translation": "En las sociedades antiguas, un hombre libre tenía más derechos."
+        }
+      ]
+    },
+    "necessitated": {
+      "es": "hizo necesario",
+      "grammar": "verb",
+      "alternatives": [
+        "requirió",
+        "necesitó"
+      ],
+      "examples": [
+        {
+          "original": "The new policy necessitated a change in procedures.",
+          "es_translation": "La nueva política hizo necesario un cambio en los procedimientos."
+        }
+      ]
+    },
+    "hardware": {
+      "es": "hardware",
+      "grammar": "noun",
+      "alternatives": [
+        "ferretería"
+      ],
+      "examples": [
+        {
+          "original": "He bought new hardware for his computer.",
+          "es_translation": "Compró nuevo hardware para su computadora."
+        }
+      ]
+    },
+    "grimly": {
+      "es": "sombríamente",
+      "grammar": "adverb",
+      "alternatives": [
+        "severamente",
+        "con gravedad"
+      ],
+      "examples": [
+        {
+          "original": "He smiled grimly at the news.",
+          "es_translation": "Sonrió sombríamente ante la noticia."
+        }
+      ]
+    },
+    "showmanship": {
+      "es": "habilidad para el espectáculo",
+      "grammar": "noun",
+      "alternatives": [
+        "talento para el espectáculo",
+        "arte escénico"
+      ],
+      "examples": [
+        {
+          "original": "His showmanship captivated the audience.",
+          "es_translation": "Su habilidad para el espectáculo cautivó a la audiencia."
+        }
+      ]
+    },
+    "wilderness": {
+      "es": "desierto",
+      "grammar": "noun",
+      "alternatives": [
+        "zona salvaje",
+        "terreno baldío"
+      ],
+      "examples": [
+        {
+          "original": "They embarked on an expedition into the vast wilderness.",
+          "es_translation": "Se embarcaron en una expedición hacia el vasto desierto."
+        }
+      ]
+    },
+    "acreage": {
+      "es": "superficie en acres",
+      "grammar": "noun",
+      "alternatives": [
+        "extensión en acres"
+      ],
+      "examples": [
+        {
+          "original": "The farm had a large acreage of arable land.",
+          "es_translation": "La granja tenía una gran superficie en acres de tierra cultivable."
+        }
+      ]
+    },
+    "squarely": {
+      "es": "directamente",
+      "grammar": "adverb",
+      "alternatives": [
+        "de lleno",
+        "francamente",
+        "con firmeza"
+      ],
+      "examples": [
+        {
+          "original": "He hit the ball squarely with the bat.",
+          "es_translation": "Golpeó la pelota directamente con el bate."
+        }
+      ]
+    },
+    "overt": {
+      "es": "manifiesto",
+      "grammar": "adjective",
+      "alternatives": [
+        "abierto",
+        "evidente"
+      ],
+      "examples": [
+        {
+          "original": "There was no overt sign of disagreement.",
+          "es_translation": "No hubo ninguna señal manifiesta de desacuerdo."
+        }
+      ]
+    },
+    "underneath": {
+      "es": "debajo de",
+      "grammar": "preposition",
+      "alternatives": [
+        "por debajo de"
+      ],
+      "examples": [
+        {
+          "original": "The cat was hiding underneath the bed.",
+          "es_translation": "El gato estaba escondido debajo de la cama."
+        }
+      ]
+    },
+    "dominance": {
+      "es": "dominio",
+      "grammar": "noun",
+      "alternatives": [
+        "predominio",
+        "hegemonía"
+      ],
+      "examples": [
+        {
+          "original": "The company achieved market dominance.",
+          "es_translation": "La empresa logró el dominio del mercado."
+        }
+      ]
+    },
+    "sprawled": {
+      "es": "desparramado",
+      "grammar": "adjective",
+      "alternatives": [
+        "extendido",
+        "tumbado"
+      ],
+      "examples": [
+        {
+          "original": "He lay sprawled on the sofa, exhausted.",
+          "es_translation": "Estaba tumbado en el sofá, agotado."
+        }
+      ]
+    },
+    "instrumental": {
+      "es": "instrumental",
+      "grammar": "adjective",
+      "alternatives": [
+        "fundamental",
+        "clave"
+      ],
+      "examples": [
+        {
+          "original": "He was instrumental in the success of the project.",
+          "es_translation": "Fue fundamental para el éxito del proyecto."
+        }
+      ]
+    },
+    "afforded": {
+      "es": "proporcionó",
+      "grammar": "verb",
+      "alternatives": [
+        "permitió",
+        "brindó"
+      ],
+      "examples": [
+        {
+          "original": "The new job afforded him more opportunities.",
+          "es_translation": "El nuevo trabajo le proporcionó más oportunidades."
+        }
+      ]
+    },
+    "concerto": {
+      "es": "concierto",
+      "grammar": "noun",
+      "alternatives": [],
+      "examples": [
+        {
+          "original": "She performed a piano concerto by Mozart.",
+          "es_translation": "Ella interpretó un concierto para piano de Mozart."
+        }
+      ]
+    },
+    "philosophic": {
+      "es": "filosófico",
+      "grammar": "adjective",
+      "alternatives": [
+        "filosófica"
+      ],
+      "examples": [
+        {
+          "original": "He approached the problem with a philosophic attitude.",
+          "es_translation": "Abordó el problema con una actitud filosófica."
+        }
+      ]
+    },
+    "ash": {
+      "es": "ceniza",
+      "grammar": "noun",
+      "alternatives": [
+        "fresno"
+      ],
+      "examples": [
+        {
+          "original": "The cigarette left a pile of ash in the ashtray.",
+          "es_translation": "El cigarrillo dejó un montón de ceniza en el cenicero."
+        }
+      ]
+    },
+    "barbed": {
+      "es": "de púas",
+      "grammar": "adjective",
+      "alternatives": [
+        "con púas",
+        "espinado"
+      ],
+      "examples": [
+        {
+          "original": "The fence was made of barbed wire.",
+          "es_translation": "La cerca estaba hecha de alambre de púas."
+        }
+      ]
+    },
+    "schoolhouse": {
+      "es": "escuela",
+      "grammar": "noun",
+      "alternatives": [
+        "casa de escuela",
+        "edificio escolar"
+      ],
+      "examples": [
+        {
+          "original": "The old schoolhouse stood on the hill.",
+          "es_translation": "La antigua escuela se alzaba en la colina."
+        }
+      ]
+    },
+    "elemental": {
+      "es": "elemental",
+      "grammar": "adjective",
+      "alternatives": [
+        "básico",
+        "fundamental"
+      ],
+      "examples": [
+        {
+          "original": "It's an elemental force of nature.",
+          "es_translation": "Es una fuerza elemental de la naturaleza."
+        }
+      ]
+    },
+    "magnum": {
+      "es": "magnum",
+      "grammar": "noun",
+      "alternatives": [
+        "gran tamaño"
+      ],
+      "examples": [
+        {
+          "original": "He ordered a magnum of champagne.",
+          "es_translation": "Pidió una botella magnum de champán."
+        }
+      ]
+    },
+    "vases": {
+      "es": "jarrones",
+      "grammar": "noun",
+      "alternatives": [
+        "floreros"
+      ],
+      "examples": [
+        {
+          "original": "She filled the vases with fresh flowers.",
+          "es_translation": "Llenó los jarrones con flores frescas."
+        }
+      ]
+    },
+    "needless": {
+      "es": "innecesario",
+      "grammar": "adjective",
+      "alternatives": [
+        "superfluo",
+        "sin necesidad"
+      ],
+      "examples": [
+        {
+          "original": "It was a needless waste of time.",
+          "es_translation": "Fue una pérdida de tiempo innecesaria."
+        }
+      ]
+    },
+    "dimensional": {
+      "es": "dimensional",
+      "grammar": "adjective",
+      "alternatives": [],
+      "examples": [
+        {
+          "original": "We live in a three-dimensional world.",
+          "es_translation": "Vivimos en un mundo tridimensional."
+        }
+      ]
+    },
+    "furnace": {
+      "es": "horno",
+      "grammar": "noun",
+      "alternatives": [
+        "caldera",
+        "hogar"
+      ],
+      "examples": [
+        {
+          "original": "The furnace keeps the house warm.",
+          "es_translation": "La caldera mantiene la casa caliente."
+        }
+      ]
+    },
+    "hideous": {
+      "es": "horrendo",
+      "grammar": "adjective",
+      "alternatives": [
+        "espantoso",
+        "feo",
+        "horrible"
+      ],
+      "examples": [
+        {
+          "original": "She wore a hideous green dress.",
+          "es_translation": "Llevaba un vestido verde horrendo."
+        }
+      ]
+    },
+    "foregoing": {
+      "es": "precedente",
+      "grammar": "adjective",
+      "alternatives": [
+        "anterior",
+        "susodicho"
+      ],
+      "examples": [
+        {
+          "original": "Based on the foregoing discussion, we decided to proceed.",
+          "es_translation": "Basándonos en la discusión precedente, decidimos proceder."
+        }
+      ]
+    },
+    "thereto": {
+      "es": "a ello",
+      "grammar": "adverb",
+      "alternatives": [
+        "a eso",
+        "al mismo"
+      ],
+      "examples": [
+        {
+          "original": "He made a statement and appended a document thereto.",
+          "es_translation": "Hizo una declaración y adjuntó un documento a ello."
+        }
+      ]
+    },
+    "posse": {
+      "es": "cuadrilla",
+      "grammar": "noun",
+      "alternatives": [
+        "grupo",
+        "partida",
+        "comitiva"
+      ],
+      "examples": [
+        {
+          "original": "The sheriff gathered his posse.",
+          "es_translation": "El sheriff reunió a su cuadrilla."
+        }
+      ]
+    },
+    "hub": {
+      "es": "centro",
+      "grammar": "noun",
+      "alternatives": [
+        "eje",
+        "núcleo",
+        "centro de operaciones"
+      ],
+      "examples": [
+        {
+          "original": "The city is a major transportation hub.",
+          "es_translation": "La ciudad es un importante centro de transporte."
+        }
+      ]
+    },
+    "autonomic": {
+      "es": "autonómico",
+      "grammar": "adjective",
+      "alternatives": [
+        "autónomo",
+        "involuntario"
+      ],
+      "examples": [
+        {
+          "original": "The autonomic nervous system controls involuntary functions.",
+          "es_translation": "El sistema nervioso autonómico controla las funciones involuntarias."
+        }
+      ]
+    },
+    "aerator": {
+      "es": "aireador",
+      "grammar": "noun",
+      "alternatives": [
+        "ventilador",
+        "oxigenador"
+      ],
+      "examples": [
+        {
+          "original": "The fish tank needs an aerator.",
+          "es_translation": "La pecera necesita un aireador."
+        }
+      ]
+    },
+    "goddamn": {
+      "es": "maldito",
+      "grammar": "adjective",
+      "alternatives": [
+        "condenado"
+      ],
+      "examples": [
+        {
+          "original": "Get out of my goddamn house!",
+          "es_translation": "¡Sal de mi maldita casa!"
+        }
+      ]
+    },
+    "allotted": {
+      "es": "asignado",
+      "grammar": "adjective",
+      "alternatives": [
+        "distribuido",
+        "repartido"
+      ],
+      "examples": [
+        {
+          "original": "Each student was allotted a locker.",
+          "es_translation": "A cada estudiante se le asignó un casillero."
+        }
+      ]
+    },
+    "bloc": {
+      "es": "bloque",
+      "grammar": "noun",
+      "alternatives": [
+        "coalición",
+        "grupo"
+      ],
+      "examples": [
+        {
+          "original": "The country joined an economic bloc.",
+          "es_translation": "El país se unió a un bloque económico."
+        }
+      ]
+    },
+    "nationally": {
+      "es": "a nivel nacional",
+      "grammar": "adverb",
+      "alternatives": [
+        "nacionalmente",
+        "en todo el país"
+      ],
+      "examples": [
+        {
+          "original": "The product is sold nationally.",
+          "es_translation": "El producto se vende a nivel nacional."
+        }
+      ]
+    },
+    "masterpiece": {
+      "es": "obra maestra",
+      "grammar": "noun",
+      "alternatives": [
+        "joya",
+        "perfección"
+      ],
+      "examples": [
+        {
+          "original": "The painting is considered a masterpiece.",
+          "es_translation": "La pintura es considerada una obra maestra."
+        }
+      ]
+    },
+    "bleak": {
+      "es": "sombrío",
+      "grammar": "adjective",
+      "alternatives": [
+        "desolador",
+        "desolado",
+        "poco prometedor"
+      ],
+      "examples": [
+        {
+          "original": "The future looks bleak.",
+          "es_translation": "El futuro parece sombrío."
+        }
+      ]
+    },
+    "sunrise": {
+      "es": "amanecer",
+      "grammar": "noun",
+      "alternatives": [
+        "salida del sol",
+        "orto"
+      ],
+      "examples": [
+        {
+          "original": "We watched the beautiful sunrise over the ocean.",
+          "es_translation": "Vimos el hermoso amanecer sobre el océano."
+        }
+      ]
+    },
+    "undergone": {
+      "es": "sufrido",
+      "grammar": "verb",
+      "alternatives": [
+        "pasado por",
+        "experimentado"
+      ],
+      "examples": [
+        {
+          "original": "He has undergone a major transformation.",
+          "es_translation": "Ha sufrido una gran transformación."
+        }
+      ]
+    },
+    "uniquely": {
+      "es": "de forma única",
+      "grammar": "adverb",
+      "alternatives": [
+        "singularmente",
+        "exclusivamente"
+      ],
+      "examples": [
+        {
+          "original": "Each person is uniquely talented.",
+          "es_translation": "Cada persona tiene un talento único."
+        }
+      ]
+    },
+    "knit": {
+      "es": "tejer",
+      "grammar": "verb",
+      "alternatives": [
+        "tricotar"
+      ],
+      "examples": [
+        {
+          "original": "She likes to knit sweaters.",
+          "es_translation": "Le gusta tejer suéteres."
+        }
+      ]
+    },
+    "pork": {
+      "es": "cerdo",
+      "grammar": "noun",
+      "alternatives": [
+        "carne de cerdo",
+        "puerco"
+      ],
+      "examples": [
+        {
+          "original": "We had roasted pork for dinner.",
+          "es_translation": "Cenamos cerdo asado."
+        }
+      ]
+    },
+    "zinc": {
+      "es": "zinc",
+      "grammar": "noun",
+      "alternatives": [],
+      "examples": [
+        {
+          "original": "Zinc is an essential mineral.",
+          "es_translation": "El zinc es un mineral esencial."
+        }
+      ]
+    },
+    "secede": {
+      "es": "secesionarse",
+      "grammar": "verb",
+      "alternatives": [
+        "separarse",
+        "independizarse"
+      ],
+      "examples": [
+        {
+          "original": "The state threatened to secede from the union.",
+          "es_translation": "El estado amenazó con secesionarse de la unión."
+        }
+      ]
+    },
+    "turnpikes": {
+      "es": "autopistas de peaje",
+      "grammar": "noun",
+      "alternatives": [
+        "carreteras de peaje",
+        "vías de peaje"
+      ],
+      "examples": [
+        {
+          "original": "Many turnpikes are crowded during rush hour.",
+          "es_translation": "Muchas autopistas de peaje están concurridas durante la hora punta."
+        }
+      ]
+    },
+    "nonetheless": {
+      "es": "no obstante",
+      "grammar": "adverb",
+      "alternatives": [
+        "sin embargo",
+        "aun así",
+        "a pesar de eso"
+      ],
+      "examples": [
+        {
+          "original": "It was raining, nonetheless, we went for a walk.",
+          "es_translation": "Estaba lloviendo, no obstante, salimos a caminar."
+        }
+      ]
+    },
+    "alas": {
+      "es": "¡ay!",
+      "grammar": "interjection",
+      "alternatives": [
+        "por desgracia"
+      ],
+      "examples": [
+        {
+          "original": "Alas, she was too late.",
+          "es_translation": "¡Ay!, ella llegó demasiado tarde."
+        }
+      ]
+    },
+    "embodiment": {
+      "es": "encarnación",
+      "grammar": "noun",
+      "alternatives": [
+        "personificación",
+        "representación"
+      ],
+      "examples": [
+        {
+          "original": "She is the embodiment of grace.",
+          "es_translation": "Ella es la encarnación de la gracia."
+        }
+      ]
+    },
+    "huddled": {
+      "es": "acurrucado",
+      "grammar": "adjective",
+      "alternatives": [
+        "apiñado",
+        "amontonado"
+      ],
+      "examples": [
+        {
+          "original": "The refugees huddled together for warmth.",
+          "es_translation": "Los refugiados se acurrucaron para calentarse."
+        }
+      ]
+    },
+    "conceivably": {
+      "es": "concebiblemente",
+      "grammar": "adverb",
+      "alternatives": [
+        "posiblemente",
+        "quizás",
+        "probablemente"
+      ],
+      "examples": [
+        {
+          "original": "It could conceivably take years to finish.",
+          "es_translation": "Concebiblemente podría tomar años terminar."
+        }
+      ]
+    },
+    "seminary": {
+      "es": "seminario",
+      "grammar": "noun",
+      "alternatives": [
+        "escuela teológica"
+      ],
+      "examples": [
+        {
+          "original": "He studied for the priesthood in a seminary.",
+          "es_translation": "Estudió para el sacerdocio en un seminario."
+        }
+      ]
+    },
+    "outward": {
+      "es": "exterior",
+      "grammar": "adjective",
+      "alternatives": [
+        "hacia fuera",
+        "externo"
+      ],
+      "examples": [
+        {
+          "original": "The box has an outward appearance of strength.",
+          "es_translation": "La caja tiene una apariencia exterior de resistencia."
+        }
+      ]
+    },
+    "spade": {
+      "es": "pala",
+      "grammar": "noun",
+      "alternatives": [
+        "azada"
+      ],
+      "examples": [
+        {
+          "original": "He dug a hole with a spade.",
+          "es_translation": "Cavó un agujero con una pala."
+        }
+      ]
+    },
+    "moisture": {
+      "es": "humedad",
+      "grammar": "noun",
+      "alternatives": [
+        "rocío"
+      ],
+      "examples": [
+        {
+          "original": "The plant needs plenty of moisture.",
+          "es_translation": "La planta necesita mucha humedad."
+        }
+      ]
+    },
+    "wipe": {
+      "es": "limpiar",
+      "grammar": "verb",
+      "alternatives": [
+        "secar",
+        "borrar",
+        "pasar un trapo"
+      ],
+      "examples": [
+        {
+          "original": "Please wipe the table clean.",
+          "es_translation": "Por favor, limpia la mesa."
+        }
+      ]
+    },
+    "keelson": {
+      "es": "sobrequilla",
+      "grammar": "noun",
+      "alternatives": [],
+      "examples": [
+        {
+          "original": "The keelson strengthens the ship's hull.",
+          "es_translation": "La sobrequilla refuerza el casco del barco."
+        }
+      ]
+    },
+    "insulation": {
+      "es": "aislamiento",
+      "grammar": "noun",
+      "alternatives": [
+        "material aislante"
+      ],
+      "examples": [
+        {
+          "original": "The house needs better insulation.",
+          "es_translation": "La casa necesita mejor aislamiento."
+        }
+      ]
+    },
+    "negligible": {
+      "es": "insignificante",
+      "grammar": "adjective",
+      "alternatives": [
+        "despreciable",
+        "mínimo"
+      ],
+      "examples": [
+        {
+          "original": "The impact was negligible.",
+          "es_translation": "El impacto fue insignificante."
+        }
+      ]
+    }
+  }
+}

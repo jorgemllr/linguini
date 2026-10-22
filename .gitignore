@@ -13,3 +13,8 @@ dist/
 # Bases de datos locales
 *.db
 api/*.db
+
+# Archivos de medios locales y scratch
+*.mp3
+*.opus
+scratch/

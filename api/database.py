@@ -76,8 +76,10 @@ def insert_document(doc_id, title, content, language='auto', audio_url=None):
         print(f"❌ Excepción al insertar documento en Supabase: {e}")
     return payload
 
-def update_document(doc_id, content=None, audio_url=None):
+def update_document(doc_id, title=None, content=None, audio_url=None):
     payload = {}
+    if title is not None:
+        payload["title"] = title
     if content is not None:
         payload["content"] = content
     if audio_url is not None:
@@ -96,6 +98,18 @@ def update_document(doc_id, content=None, audio_url=None):
     except Exception as e:
         print(f"❌ Excepción al actualizar documento: {e}")
     return {"id": doc_id, **payload}
+
+def delete_document(doc_id):
+    """Delete a document from Supabase database."""
+    if not SUPABASE_URL or not SUPABASE_KEY:
+        return False
+    url = f"{SUPABASE_URL}/rest/v1/documents?id=eq.{doc_id}"
+    try:
+        r = requests.delete(url, headers=get_headers())
+        return r.status_code in [200, 204]
+    except Exception as e:
+        print(f"❌ Excepción al eliminar documento: {e}")
+        return False
 
 def update_document_progress(doc_id, current_page, scroll_position):
     payload = {

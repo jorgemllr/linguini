@@ -4,6 +4,7 @@
 *.wav
 *.txt
 !requirements.txt
+!frontend/src/transcript.txt
 scratch/
 books/
 node_modules/

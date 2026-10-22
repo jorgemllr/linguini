@@ -1,5 +1,5 @@
 Flask
 flask-cors
-pymupdf
+pymupdf<2.0.0
 requests
 python-dotenv

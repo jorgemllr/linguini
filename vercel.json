@@ -5,5 +5,10 @@
   ],
   "buildCommand": "cd frontend && npm install && npm run build",
   "outputDirectory": "frontend/dist",
-  "framework": "vite"
+  "framework": "vite",
+  "functions": {
+    "api/index.py": {
+      "excludeFiles": "{frontend/**,node_modules/**,scratch/**,books/**,*.mp3,*.opus,*.wav,*.txt}"
+    }
+  }
 }

@@ -1,0 +1,8 @@
+# Media and scratch files not needed by Vercel
+*.mp3
+*.opus
+*.wav
+*.txt
+scratch/
+books/
+node_modules/

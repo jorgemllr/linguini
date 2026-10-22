@@ -7,8 +7,9 @@
   "outputDirectory": "frontend/dist",
   "framework": "vite",
   "functions": {
-    "api/index.py": {
-      "excludeFiles": "{frontend/**,node_modules/**,scratch/**,books/**,*.mp3,*.opus,*.wav,*.txt}"
+    "api/**/*.py": {
+      "includeFiles": "api/**",
+      "excludeFiles": "{frontend/**,node_modules/**,scratch/**,books/**,*.mp3,*.opus,*.wav,*.txt,*.db}"
     }
   }
 }

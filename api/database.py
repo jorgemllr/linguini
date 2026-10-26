@@ -137,7 +137,10 @@ def get_cached_word(word, language):
     if not SUPABASE_URL or not SUPABASE_KEY:
         return None
     
-    url = f"{SUPABASE_URL}/rest/v1/word_cache?word=ilike.{word}&language=ilike.{language}"
+    if language and language != 'auto':
+        url = f"{SUPABASE_URL}/rest/v1/word_cache?word=ilike.{word}&language=ilike.{language}"
+    else:
+        url = f"{SUPABASE_URL}/rest/v1/word_cache?word=ilike.{word}"
     try:
         r = requests.get(url, headers=get_headers())
         if r.status_code == 200:
@@ -154,6 +157,30 @@ def get_cached_word(word, language):
     except Exception as e:
         print(f"❌ Excepción al consultar palabra en Supabase: {e}")
     return None
+
+def get_all_cached_words(language=None):
+    if not SUPABASE_URL or not SUPABASE_KEY:
+        return []
+    
+    url = f"{SUPABASE_URL}/rest/v1/word_cache?order=created_at.desc"
+    if language and language != 'all':
+        url += f"&language=ilike.{language}"
+    try:
+        r = requests.get(url, headers=get_headers())
+        if r.status_code == 200:
+            rows = r.json()
+            for row in rows:
+                if isinstance(row.get('translation_data'), str):
+                    try:
+                        row['translation_data'] = json.loads(row['translation_data'])
+                    except Exception:
+                        pass
+            return rows
+        else:
+            print(f"❌ Error al consultar vocabulario en Supabase: {r.status_code} - {r.text}")
+    except Exception as e:
+        print(f"❌ Excepción al consultar vocabulario: {e}")
+    return []
 
 def insert_cached_word(word, language, translation_data):
     # Aseguramos que translation_data sea una estructura de diccionario/lista nativa

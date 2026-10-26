@@ -338,6 +338,12 @@ const CloudIcon = () => (
 const AudioIcon = () => (
   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}><path d="M9 18V5l12-2v13"></path><circle cx="6" cy="18" r="3"></circle><circle cx="18" cy="16" r="3"></circle></svg>
 );
+const VocabIcon = () => (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}><path d="M12 2H2v20h20V12"></path><path d="M17 2v6h6"></path><path d="M7 11h6"></path><path d="M7 15h10"></path></svg>
+);
+const SearchSmallIcon = () => (
+  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, opacity: 0.6 }}><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+);
 const FolderIcon = ({ isOpen }) => (
   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, color: '#FFD60A' }}>
     <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>
@@ -555,11 +561,13 @@ function App() {
 
   const [newTitle, setNewTitle] = useState("");
   const [newContent, setNewContent] = useState("");
+  const [manualLang, setManualLang] = useState("fr");
+  const [manualAudioFile, setManualAudioFile] = useState(null);
 
   const [importTab, setImportTab] = useState("manual");
   const [pdfFile, setPdfFile] = useState(null);
   const [pdfTitle, setPdfTitle] = useState("");
-  const [pdfLang, setPdfLang] = useState("en");
+  const [pdfLang, setPdfLang] = useState("fr");
   const [pdfAudioUrl, setPdfAudioUrl] = useState("");
   const [importingPdf, setImportingPdf] = useState(false);
 
@@ -581,6 +589,15 @@ function App() {
   const [isCreatingFolder, setIsCreatingFolder] = useState(false);
   const [openFolders, setOpenFolders] = useState({});
   const [moveModalDoc, setMoveModalDoc] = useState(null);
+
+  // --- MODAL DE EDICIÓN NATIVO DE DOCUMENTO ---
+  const [editModalDoc, setEditModalDoc] = useState(null);
+  const [editDocTitle, setEditDocTitle] = useState("");
+  const [editDocContent, setEditDocContent] = useState("");
+  const [editDocLang, setEditDocLang] = useState("fr");
+  const [editDocAudioFile, setEditDocAudioFile] = useState(null);
+  const [isSavingEdit, setIsSavingEdit] = useState(false);
+  const [editAudioProgress, setEditAudioProgress] = useState(0);
 
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(() => getInitialAudioTime(initialAudioVal));
@@ -636,6 +653,13 @@ function App() {
   useEffect(() => {
     localStorage.setItem('vocab-detailed-mode', isDetailedMode.toString());
   }, [isDetailedMode]);
+
+  // --- VOCABULARY LIST MODAL & MANAGEMENT ---
+  const [showVocabModal, setShowVocabModal] = useState(false);
+  const [vocabLanguageFilter, setVocabLanguageFilter] = useState('all');
+  const [vocabSearchQuery, setVocabSearchQuery] = useState('');
+  const [cachedVocabList, setCachedVocabList] = useState([]);
+  const [isLoadingVocab, setIsLoadingVocab] = useState(false);
 
   // --- OFFLINE CACHE STATE ---
   const [cachedUrls, setCachedUrls] = useState({});
@@ -1515,18 +1539,33 @@ function App() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // 2. Save document
+  // 2. Save document (Supports text, language and optional audio attachment)
   const handleSaveDocument = async () => {
     if (!newTitle || !newContent) return alert("Please enter title and content.");
     setIsSaving(true);
     
     try {
+        let uploadedAudioUrl = null;
+
+        // Si el usuario adjuntó un archivo de audio al texto manual
+        if (manualAudioFile && SUPABASE_URL && SUPABASE_ANON_KEY) {
+          const cleanKey = sanitizeStorageKey(manualAudioFile.name);
+          const storagePath = `audios/${Date.now()}_${cleanKey}`;
+          uploadedAudioUrl = await uploadToSupabaseStorage(manualAudioFile, storagePath);
+        }
+
         let newDoc;
+        const chosenLang = manualLang || 'fr';
         try {
           const res = await fetch(getApiUrl('/api/documents'), {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ title: newTitle.trim(), content: newContent, language: 'auto' })
+              body: JSON.stringify({ 
+                title: newTitle.trim(), 
+                content: newContent, 
+                language: chosenLang,
+                audio_url: uploadedAudioUrl
+              })
           });
           if (!res.ok) throw new Error(`HTTP ${res.status}`);
           newDoc = await res.json();
@@ -1538,7 +1577,8 @@ function App() {
               id: directId,
               title: newTitle.trim(),
               content: newContent,
-              language: 'auto',
+              language: chosenLang,
+              audio_url: uploadedAudioUrl,
               created_at: new Date().toISOString()
             };
             const directRes = await fetchFromSupabase('documents', {
@@ -1564,14 +1604,92 @@ function App() {
 
         setDocuments(prev => [newDoc, ...prev]);
         setCurrentDoc(newDoc);
+        if (uploadedAudioUrl) {
+          setActiveAudio({
+            url: uploadedAudioUrl,
+            title: newDoc.title
+          });
+        }
+
         setShowAddModal(false);
         setNewTitle("");
         setNewContent("");
+        setManualAudioFile(null);
         setSelectedFolder("");
     } catch (err) {
         alert("Error saving: " + err.message);
     } finally {
         setIsSaving(false);
+    }
+  };
+
+  // 2b. Update existing document (title, content, language, and optional audio attachment)
+  const handleUpdateDocument = async () => {
+    if (!editModalDoc) return;
+    if (!editDocTitle.trim()) return alert("Document title cannot be empty.");
+    setIsSavingEdit(true);
+    setEditAudioProgress(0);
+
+    try {
+      let finalAudioUrl = editModalDoc.audio_url || null;
+
+      // Si el usuario seleccionó un nuevo archivo de audio para adjuntar al documento
+      if (editDocAudioFile && SUPABASE_URL && SUPABASE_ANON_KEY) {
+        const cleanKey = sanitizeStorageKey(editDocAudioFile.name);
+        const storagePath = `audios/${Date.now()}_${cleanKey}`;
+        finalAudioUrl = await uploadToSupabaseStorage(editDocAudioFile, storagePath, (pct) => {
+          setEditAudioProgress(pct);
+        });
+      }
+
+      const updatedPayload = {
+        title: editDocTitle.trim(),
+        content: editDocContent,
+        language: editDocLang || 'fr',
+        audio_url: finalAudioUrl
+      };
+
+      let updatedDoc = { ...editModalDoc, ...updatedPayload };
+
+      try {
+        const res = await fetch(getApiUrl(`/api/documents/${editModalDoc.id}`), {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(updatedPayload)
+        });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const resData = await res.json();
+        if (resData && !resData.error) updatedDoc = { ...updatedDoc, ...resData };
+      } catch (apiErr) {
+        if (SUPABASE_URL && SUPABASE_ANON_KEY) {
+          await fetchFromSupabase(`documents?id=eq.${editModalDoc.id}`, {
+            method: 'PATCH',
+            body: JSON.stringify(updatedPayload)
+          });
+        } else {
+          throw apiErr;
+        }
+      }
+
+      // Actualizar estado local
+      setDocuments(prev => prev.map(d => d.id === editModalDoc.id ? updatedDoc : d));
+      if (currentDoc?.id === editModalDoc.id) {
+        setCurrentDoc(updatedDoc);
+      }
+      if (activeAudio?.url === editModalDoc.audio_url || (finalAudioUrl && activeAudio?.title === editModalDoc.title)) {
+        setActiveAudio(finalAudioUrl ? { url: finalAudioUrl, title: updatedDoc.title } : null);
+      } else if (finalAudioUrl && !activeAudio) {
+        setActiveAudio({ url: finalAudioUrl, title: updatedDoc.title });
+      }
+
+      setEditModalDoc(null);
+      setEditDocAudioFile(null);
+      alert("✅ Document updated successfully.");
+    } catch (err) {
+      alert("Error updating document: " + err.message);
+    } finally {
+      setIsSavingEdit(false);
+      setEditAudioProgress(0);
     }
   };
 
@@ -1777,6 +1895,60 @@ function App() {
       }
     }
   };
+
+  // --- GESTIÓN Y CARGA DE VOCABULARIO ---
+  const loadVocabularyList = useCallback(async (lang = vocabLanguageFilter) => {
+    setIsLoadingVocab(true);
+    let loaded = false;
+    try {
+      const url = lang && lang !== 'all' 
+        ? getApiUrl(`/api/word_cache?language=${lang}`) 
+        : getApiUrl('/api/word_cache');
+      const res = await fetch(url);
+      if (res.ok) {
+        const data = await res.json();
+        if (Array.isArray(data)) {
+          setCachedVocabList(data);
+          loaded = true;
+        }
+      }
+    } catch (e) {
+      // Backend local no disponible
+    }
+
+    // Direct fallback to Supabase Cloud Database si el backend local no está corriendo
+    if (!loaded) {
+      try {
+        let endpoint = 'word_cache?select=*&order=created_at.desc';
+        if (lang && lang !== 'all') {
+          endpoint += `&language=ilike.${lang}`;
+        }
+        const sRes = await fetchFromSupabase(endpoint);
+        if (sRes && sRes.ok) {
+          const sData = await sRes.json();
+          if (Array.isArray(sData)) {
+            const parsedRows = sData.map(row => {
+              if (typeof row.translation_data === 'string') {
+                try { row.translation_data = JSON.parse(row.translation_data); } catch (_) {}
+              }
+              return row;
+            });
+            setCachedVocabList(parsedRows);
+          }
+        }
+      } catch (sErr) {
+        console.error("Error consultando Supabase directamente:", sErr);
+      }
+    }
+
+    setIsLoadingVocab(false);
+  }, [vocabLanguageFilter]);
+
+  useEffect(() => {
+    if (showVocabModal) {
+      loadVocabularyList(vocabLanguageFilter);
+    }
+  }, [showVocabModal, vocabLanguageFilter, loadVocabularyList]);
 
   // Auto-cargar el audio del documento si este tiene uno enlazado al cambiar y guardar el último documento abierto
   useEffect(() => {
@@ -2173,20 +2345,21 @@ function App() {
   };
 
   // 4. PRONUNCIACIÓN DE PALABRA CON VOCES PREMIUM/NEURONALES NATIVAS
-  const playWordAudio = (word) => {
+  const playWordAudio = (word, targetLang = null) => {
       if (!word) return;
       // Detenemos cualquier audio anterior
       window.speechSynthesis.cancel();
 
       const utterance = new SpeechSynthesisUtterance(word);
       
-      // Obtener el código de idioma adecuado
-      let langCode = 'de-DE'; // Default
-      if (currentDoc && currentDoc.language) {
-        if (currentDoc.language === 'fr') langCode = 'fr-FR';
-        if (currentDoc.language === 'en') langCode = 'en-US';
-        if (currentDoc.language === 'es') langCode = 'es-ES';
-      }
+      // Obtener el código de idioma adecuado (priorizar targetLang explícito)
+      const langToCheck = (targetLang || (currentDoc && currentDoc.language) || 'fr').toLowerCase();
+      let langCode = 'fr-FR'; // Default sensible para francés
+      if (langToCheck.startsWith('fr')) langCode = 'fr-FR';
+      else if (langToCheck.startsWith('en')) langCode = 'en-US';
+      else if (langToCheck.startsWith('de')) langCode = 'de-DE';
+      else if (langToCheck.startsWith('es')) langCode = 'es-ES';
+      else if (langToCheck.startsWith('it')) langCode = 'it-IT';
       
       utterance.lang = langCode;
       utterance.rate = 0.9; // Un poco más lento para claridad
@@ -2491,10 +2664,40 @@ function App() {
 
     // CACHÉ
     try {
-        const cacheRes = await fetch(getApiUrl(`/api/word_cache?word=${searchWord}&language=${currentDoc?.language || 'auto'}`));
-        const cached = await cacheRes.json();
+        let cached = null;
+        try {
+            const cacheRes = await fetch(getApiUrl(`/api/word_cache?word=${searchWord}&language=${currentDoc?.language || 'auto'}`));
+            if (cacheRes.ok) {
+                cached = await cacheRes.json();
+            }
+        } catch (_) {}
 
-        if (cached) {
+        // Fallback directo a Supabase Cloud Database si el backend local no responde
+        if (!cached) {
+            try {
+                const sLang = (currentDoc?.language || '').trim().toLowerCase();
+                let filter = `word=ilike.${encodeURIComponent(searchWord)}`;
+                if (sLang && sLang !== 'auto') {
+                    filter += `&language=ilike.${sLang}`;
+                }
+                let sRes = await fetchFromSupabase(`word_cache?${filter}&limit=1`);
+                if ((!sRes || !sRes.ok) && sLang && sLang !== 'auto') {
+                    // Si no hubo coincidencia con el filtro exacto de idioma, buscar solo por palabra
+                    sRes = await fetchFromSupabase(`word_cache?word=ilike.${encodeURIComponent(searchWord)}&limit=1`);
+                }
+                if (sRes && sRes.ok) {
+                    const sRows = await sRes.json();
+                    if (sRows && sRows.length > 0) {
+                        cached = sRows[0];
+                        if (typeof cached.translation_data === 'string') {
+                            try { cached.translation_data = JSON.parse(cached.translation_data); } catch (_) {}
+                        }
+                    }
+                }
+            } catch (_) {}
+        }
+
+        if (cached && cached.translation_data) {
             if (isPopupClosedByUser.current) return;
             setSelectedWord({ word: cleanWord, ...cached.translation_data, associatedPhrase, fromCache: true });
             setIsLoading(false);
@@ -2541,16 +2744,34 @@ function App() {
       if (isPopupClosedByUser.current) return;
       setSelectedWord({ word: cleanWord, ...apiData, associatedPhrase, fromCache: false });
 
+      // Guardar en caché (Backend y Supabase)
       try {
-        await fetch(getApiUrl('/api/word_cache'), {
+        let savedToBackend = false;
+        try {
+          const cRes = await fetch(getApiUrl('/api/word_cache'), {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                  word: searchWord,
+                  language: currentDoc?.language || 'auto',
+                  translation_data: apiData
+              })
+          });
+          if (cRes.ok) savedToBackend = true;
+        } catch (_) {}
+
+        if (!savedToBackend) {
+          // Direct fallback to Supabase
+          await fetchFromSupabase('word_cache', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: { 'Prefer': 'resolution=merge-duplicates,return=representation' },
             body: JSON.stringify({
-                word: searchWord,
-                language: currentDoc?.language || 'auto',
-                translation_data: apiData
+              word: searchWord.toLowerCase(),
+              language: (currentDoc?.language || 'fr').toLowerCase(),
+              translation_data: apiData
             })
-        });
+          });
+        }
       } catch (dbErr) {
         console.warn("Could not cache word in database:", dbErr);
       }
@@ -3718,11 +3939,14 @@ function App() {
           <button 
             onClick={(e) => {
               e.stopPropagation();
-              const newTitle = prompt("New name for document:", cleanDocTitle);
-              if (newTitle) handleRenameDocument(doc, newTitle);
+              setEditModalDoc(doc);
+              setEditDocTitle(cleanDocTitle);
+              setEditDocContent(doc.content || "");
+              setEditDocLang(doc.language || "fr");
+              setEditDocAudioFile(null);
             }}
             className="icon-btn"
-            title="Rename document"
+            title="Edit document"
             style={{ padding: '4px', opacity: 0.5 }}
             onMouseOver={e => e.currentTarget.style.opacity = 1}
             onMouseOut={e => e.currentTarget.style.opacity = 0.5}
@@ -3768,16 +3992,6 @@ function App() {
         onClick={() => {
           setActiveAudio({ url: doc.audio_url, title: doc.title });
           setSidebarOpen(false);
-          if (currentDoc && currentDoc.id !== 'demo' && currentDoc.language !== 'audio') {
-            const updatedDoc = { ...currentDoc, audio_url: doc.audio_url };
-            setCurrentDoc(updatedDoc);
-            setDocuments(prev => prev.map(d => d.id === currentDoc.id ? updatedDoc : d));
-            fetch(getApiUrl(`/api/documents/${currentDoc.id}`), {
-              method: 'PUT',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ audio_url: doc.audio_url })
-            }).catch(err => console.warn("Error linking audio track to book:", err));
-          }
         }}
         style={{ 
           display: 'flex', alignItems: 'center', gap: '8px',
@@ -3840,11 +4054,14 @@ function App() {
           <button 
             onClick={(e) => {
               e.stopPropagation();
-              const newTitle = prompt("New name for audio:", doc.title);
-              if (newTitle) handleRenameDocument(doc, newTitle);
+              setEditModalDoc(doc);
+              setEditDocTitle(doc.title);
+              setEditDocContent(doc.content || "");
+              setEditDocLang(doc.language || "audio");
+              setEditDocAudioFile(null);
             }}
             className="icon-btn"
-            title="Rename audio"
+            title="Edit audio"
             style={{ padding: '4px', opacity: 0.5 }}
             onMouseOver={e => e.currentTarget.style.opacity = 1}
             onMouseOut={e => e.currentTarget.style.opacity = 0.5}
@@ -4100,8 +4317,53 @@ function App() {
               <button onClick={() => setSidebarOpen(false)} className="icon-btn" style={{ opacity: 0.7 }}><CloseIconSimple/></button>
           </div>
           
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '14px', overflowY: 'auto', flex: 1, paddingRight: '4px' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '14px', overflowY: 'auto', flex: 1, padding: '4px 4px 16px 2px' }}>
               
+              {/* BOTÓN VOCABULARY LIST */}
+              <div 
+                  onClick={() => {
+                      setSidebarOpen(false);
+                      setShowVocabModal(true);
+                  }}
+                  style={{
+                      display: 'flex', alignItems: 'center', gap: '12px',
+                      padding: '12px 14px', borderRadius: '12px',
+                      background: 'linear-gradient(135deg, rgba(255, 179, 64, 0.15) 0%, rgba(255, 149, 0, 0.05) 100%)',
+                      border: '1px solid rgba(255, 179, 64, 0.25)',
+                      cursor: 'pointer', transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
+                      boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
+                      flexShrink: 0
+                  }}
+                  onMouseOver={(e) => {
+                      e.currentTarget.style.background = 'linear-gradient(135deg, rgba(255, 179, 64, 0.25) 0%, rgba(255, 149, 0, 0.12) 100%)';
+                      e.currentTarget.style.borderColor = 'rgba(255, 179, 64, 0.45)';
+                      e.currentTarget.style.boxShadow = '0 6px 16px rgba(255, 179, 64, 0.15)';
+                  }}
+                  onMouseOut={(e) => {
+                      e.currentTarget.style.background = 'linear-gradient(135deg, rgba(255, 179, 64, 0.15) 0%, rgba(255, 149, 0, 0.05) 100%)';
+                      e.currentTarget.style.borderColor = 'rgba(255, 179, 64, 0.25)';
+                      e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.1)';
+                  }}
+              >
+                  <div style={{
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      width: '32px', height: '32px', borderRadius: '8px',
+                      background: '#FF9500', color: '#000'
+                  }}>
+                      <VocabIcon />
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column' }}>
+                      <span style={{ fontSize: '0.9rem', fontWeight: '700', color: '#fff', letterSpacing: '-0.2px' }}>
+                          Vocabulary
+                      </span>
+                      <span style={{ fontSize: '0.72rem', color: '#FFB340', opacity: 0.9 }}>
+                          Saved Words & Translations
+                      </span>
+                  </div>
+              </div>
+
+              <div style={{ height: '1px', background: 'rgba(255,255,255,0.06)', margin: '2px 0' }} />
+
               {/* SECCIÓN CARPETAS / COLECCIONES */}
               <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
                   <div 
@@ -4336,10 +4598,12 @@ function App() {
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
                 <div style={{ textAlign: 'left', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', marginRight: '15px', flex: 1 }}>
                     <div style={{ fontSize: '0.9rem', fontWeight: '600', letterSpacing: '0.3px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                        {currentTrackGroup ? currentTrackGroup.series : (activeAudio.title.startsWith("Subrayados: ") ? activeAudio.title.replace("Subrayados: ", "") : activeAudio.title)}
+                        {activeAudio.title.startsWith("Subrayados: ") ? activeAudio.title.replace("Subrayados: ", "") : activeAudio.title}
                     </div>
                     <div style={{ fontSize: '0.75rem', color: '#86868b' }}>
-                        {currentTrackGroup ? `Chapter ${currentTrackGroup.currentIndex + 1} of ${currentTrackGroup.tracks.length} · Playing Audio` : 'Playing Audio'}
+                        {currentTrackGroup && currentTrackGroup.currentIndex !== -1
+                            ? `${currentTrackGroup.series} · Chapter ${currentTrackGroup.currentIndex + 1} of ${currentTrackGroup.tracks.length}`
+                            : 'Playing Audio'}
                     </div>
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -4565,12 +4829,54 @@ function App() {
                         />
                         <textarea 
                             placeholder="Content..." value={newContent} onChange={e => setNewContent(e.target.value)}
-                            style={{ width: '100%', height: '160px', padding: '16px', background: '#2C2C2E', border: 'none', borderRadius: '12px', color: 'white', marginBottom: '16px', fontSize: '1rem', resize: 'none', fontFamily: 'inherit', outline: 'none' }}
+                            style={{ width: '100%', height: '140px', padding: '16px', background: '#2C2C2E', border: 'none', borderRadius: '12px', color: 'white', marginBottom: '12px', fontSize: '1rem', resize: 'none', fontFamily: 'inherit', outline: 'none' }}
                         />
+
+                        {/* Selección de Idioma */}
+                        <div style={{ marginBottom: '12px' }}>
+                            <label style={{ display: 'block', fontSize: '0.75rem', color: theme.textSecondary, marginBottom: '6px', fontWeight: '700', letterSpacing: '0.5px' }}>LANGUAGE</label>
+                            <select 
+                                value={manualLang} onChange={e => setManualLang(e.target.value)}
+                                style={{ width: '100%', padding: '12px 14px', background: '#2C2C2E', border: 'none', borderRadius: '12px', color: 'white', fontSize: '0.9rem', outline: 'none', cursor: 'pointer' }}
+                            >
+                                <option value="fr">🇫🇷 French (Français)</option>
+                                <option value="en">🇬🇧 English</option>
+                                <option value="de">🇩🇪 German (Deutsch)</option>
+                                <option value="es">🇪🇸 Spanish (Español)</option>
+                                <option value="it">🇮🇹 Italian (Italiano)</option>
+                            </select>
+                        </div>
+
+                        {/* Adjuntar Audio Opcional */}
+                        <div style={{ marginBottom: '12px' }}>
+                            <label style={{ display: 'block', fontSize: '0.75rem', color: theme.textSecondary, marginBottom: '6px', fontWeight: '700', letterSpacing: '0.5px' }}>ATTACH AUDIO (OPTIONAL)</label>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                <label style={{ 
+                                    padding: '10px 14px', borderRadius: '10px', background: manualAudioFile ? 'rgba(48, 209, 88, 0.15)' : 'rgba(255,255,255,0.06)',
+                                    color: manualAudioFile ? '#30D158' : '#fff', fontSize: '0.85rem', fontWeight: '600', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px'
+                                }}>
+                                    <input 
+                                        type="file" accept=".mp3,.m4a,.wav,.ogg,.aac"
+                                        onChange={e => setManualAudioFile(e.target.files[0] || null)}
+                                        style={{ display: 'none' }}
+                                    />
+                                    <span>🎧</span> {manualAudioFile ? manualAudioFile.name : 'Choose Audio File...'}
+                                </label>
+                                {manualAudioFile && (
+                                    <button 
+                                        onClick={() => setManualAudioFile(null)} 
+                                        style={{ background: 'none', border: 'none', color: '#FF453A', cursor: 'pointer', fontSize: '0.8rem' }}
+                                    >
+                                        Remove
+                                    </button>
+                                )}
+                            </div>
+                        </div>
+
                         {renderFolderSelector()}
-                        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px' }}>
+                        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px', marginTop: '10px' }}>
                             <button onClick={() => setShowAddModal(false)} className="btn-secondary">Cancel</button>
-                            <button onClick={handleSaveDocument} className="btn-primary">{isSaving ? 'Saving...' : 'Save'}</button>
+                            <button onClick={handleSaveDocument} className="btn-primary">{isSaving ? 'Saving...' : 'Save Document'}</button>
                         </div>
                     </>
                 ) : importTab === "pdf" ? (
@@ -4797,6 +5103,501 @@ function App() {
         </div>
       )}
 
+      {/* MODAL EDITAR DOCUMENTO NATIVO */}
+      {editModalDoc && (
+        <div style={{ position: 'fixed', inset: 0, zIndex: 3500, background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(10px)', WebkitBackdropFilter: 'blur(10px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}>
+          <div style={{ background: '#1C1C1E', width: '100%', maxWidth: '520px', padding: '28px', borderRadius: '24px', border: `1px solid ${theme.border}`, boxShadow: '0 25px 60px rgba(0,0,0,0.8)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '18px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <span style={{ fontSize: '1.2rem' }}>✏️</span>
+                <h3 style={{ margin: 0, color: 'white', fontSize: '1.25rem', fontWeight: '700' }}>Edit Document</h3>
+              </div>
+              <button 
+                onClick={() => { setEditModalDoc(null); setEditDocAudioFile(null); }} 
+                className="icon-btn" 
+                style={{ padding: '6px', opacity: 0.6 }}
+              >
+                <CloseIconSimple />
+              </button>
+            </div>
+
+            {/* Título */}
+            <div style={{ marginBottom: '14px' }}>
+              <label style={{ display: 'block', fontSize: '0.75rem', color: theme.textSecondary, marginBottom: '6px', fontWeight: '700', letterSpacing: '0.5px' }}>DOCUMENT TITLE</label>
+              <input 
+                type="text" 
+                value={editDocTitle} 
+                onChange={e => setEditDocTitle(e.target.value)}
+                placeholder="Title"
+                style={{ width: '100%', padding: '14px', background: '#2C2C2E', border: 'none', borderRadius: '12px', color: 'white', fontSize: '0.95rem', outline: 'none' }}
+              />
+            </div>
+
+            {/* Idioma */}
+            <div style={{ marginBottom: '14px' }}>
+              <label style={{ display: 'block', fontSize: '0.75rem', color: theme.textSecondary, marginBottom: '6px', fontWeight: '700', letterSpacing: '0.5px' }}>LANGUAGE</label>
+              <select 
+                value={editDocLang} 
+                onChange={e => setEditDocLang(e.target.value)}
+                style={{ width: '100%', padding: '12px 14px', background: '#2C2C2E', border: 'none', borderRadius: '12px', color: 'white', fontSize: '0.9rem', outline: 'none', cursor: 'pointer' }}
+              >
+                <option value="fr">🇫🇷 French (Français)</option>
+                <option value="en">🇬🇧 English</option>
+                <option value="de">🇩🇪 German (Deutsch)</option>
+                <option value="es">🇪🇸 Spanish (Español)</option>
+                <option value="it">🇮🇹 Italian (Italiano)</option>
+                <option value="audio">🎧 Audio Track</option>
+              </select>
+            </div>
+
+            {/* Audio Adjunto / Estado */}
+            <div style={{ marginBottom: '16px' }}>
+              <label style={{ display: 'block', fontSize: '0.75rem', color: theme.textSecondary, marginBottom: '6px', fontWeight: '700', letterSpacing: '0.5px' }}>ATTACHED AUDIO</label>
+              {editModalDoc.audio_url ? (
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 14px', borderRadius: '12px', background: 'rgba(48, 209, 88, 0.1)', border: '1px solid rgba(48, 209, 88, 0.2)', marginBottom: '10px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#30D158', fontSize: '0.85rem', fontWeight: '600' }}>
+                    <span>✅</span> Audio linked and ready
+                  </div>
+                  <button 
+                    onClick={() => {
+                      setEditModalDoc(prev => ({ ...prev, audio_url: null }));
+                    }}
+                    style={{ background: 'none', border: 'none', color: '#FF453A', fontSize: '0.75rem', cursor: 'pointer', fontWeight: '600' }}
+                  >
+                    Unlink
+                  </button>
+                </div>
+              ) : (
+                <div style={{ fontSize: '0.8rem', color: theme.textSecondary, marginBottom: '8px' }}>
+                  No audio currently linked to this document.
+                </div>
+              )}
+
+              {/* Input para adjuntar o reemplazar audio */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <label style={{ 
+                  padding: '10px 14px', borderRadius: '10px', 
+                  background: editDocAudioFile ? 'rgba(48, 209, 88, 0.15)' : 'rgba(255,255,255,0.06)',
+                  color: editDocAudioFile ? '#30D158' : '#fff', fontSize: '0.85rem', fontWeight: '600', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px'
+                }}>
+                  <input 
+                    type="file" accept=".mp3,.m4a,.wav,.ogg,.aac"
+                    onChange={e => setEditDocAudioFile(e.target.files[0] || null)}
+                    style={{ display: 'none' }}
+                  />
+                  <span>🎧</span> {editDocAudioFile ? editDocAudioFile.name : (editModalDoc.audio_url ? 'Replace Audio File...' : 'Attach Audio File...')}
+                </label>
+                {editDocAudioFile && (
+                  <button 
+                    onClick={() => setEditDocAudioFile(null)} 
+                    style={{ background: 'none', border: 'none', color: '#FF453A', cursor: 'pointer', fontSize: '0.8rem' }}
+                  >
+                    Cancel
+                  </button>
+                )}
+              </div>
+              {editAudioProgress > 0 && editAudioProgress < 100 && (
+                <div style={{ marginTop: '8px' }}>
+                  <div style={{ fontSize: '0.75rem', color: theme.textSecondary, marginBottom: '4px' }}>Uploading audio... {editAudioProgress}%</div>
+                  <div style={{ height: '3px', background: 'rgba(255,255,255,0.1)', borderRadius: '2px' }}>
+                    <div style={{ height: '100%', width: `${editAudioProgress}%`, background: '#30D158', borderRadius: '2px' }} />
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Botones de acción */}
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px', marginTop: '20px' }}>
+              <button 
+                onClick={() => { setEditModalDoc(null); setEditDocAudioFile(null); }} 
+                className="btn-secondary"
+                disabled={isSavingEdit}
+              >
+                Cancel
+              </button>
+              <button 
+                onClick={handleUpdateDocument} 
+                disabled={isSavingEdit}
+                className="btn-primary"
+                style={{ opacity: isSavingEdit ? 0.6 : 1 }}
+              >
+                {isSavingEdit ? 'Saving...' : 'Save Changes'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL LISTA DE VOCABULARIO */}
+      {showVocabModal && (
+        <div style={{
+          position: 'fixed', inset: 0, zIndex: 2500,
+          background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(16px)', WebkitBackdropFilter: 'blur(16px)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px'
+        }}>
+          <div style={{
+            background: '#161618',
+            borderRadius: '24px',
+            border: '1px solid rgba(255,255,255,0.08)',
+            width: '100%', maxWidth: '820px', height: '88vh', maxHeight: '780px',
+            display: 'flex', flexDirection: 'column',
+            overflow: 'hidden', boxShadow: '0 25px 60px rgba(0,0,0,0.6)'
+          }}>
+            {/* Encabezado del modal */}
+            <div style={{
+              padding: '22px 26px 16px 26px',
+              borderBottom: '1px solid rgba(255,255,255,0.06)',
+              display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start'
+            }}>
+              <div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                  <div style={{
+                    width: '32px', height: '32px', borderRadius: '10px',
+                    background: 'rgba(255, 179, 64, 0.15)', color: '#FFB340',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center'
+                  }}>
+                    <VocabIcon />
+                  </div>
+                  <h2 style={{ margin: 0, fontSize: '1.4rem', fontWeight: '700', color: '#fff', letterSpacing: '-0.3px' }}>
+                    Vocabulary Dictionary
+                  </h2>
+                </div>
+                <p style={{ margin: '6px 0 0 0', color: theme.textSecondary, fontSize: '0.82rem' }}>
+                  All highlighted & translated words from your readings, organized for study.
+                </p>
+              </div>
+              <button 
+                onClick={() => setShowVocabModal(false)}
+                className="icon-btn"
+                style={{ padding: '6px', opacity: 0.7, background: 'rgba(255,255,255,0.06)', borderRadius: '50%' }}
+              >
+                <CloseIconSimple />
+              </button>
+            </div>
+
+            {/* Barra de Filtros y Búsqueda */}
+            <div style={{
+              padding: '14px 26px',
+              borderBottom: '1px solid rgba(255,255,255,0.04)',
+              background: 'rgba(255,255,255,0.02)',
+              display: 'flex', flexWrap: 'wrap', gap: '12px', alignItems: 'center', justifyContent: 'space-between'
+            }}>
+              {/* Tabs de Idioma */}
+              <div style={{ display: 'flex', gap: '6px', background: 'rgba(0,0,0,0.3)', padding: '3px', borderRadius: '10px' }}>
+                {[
+                  { id: 'all', label: 'All' },
+                  { id: 'fr', label: '🇫🇷 Français' },
+                  { id: 'en', label: '🇬🇧 English' },
+                  { id: 'de', label: '🇩🇪 Deutsch' },
+                  { id: 'it', label: '🇮🇹 Italiano' }
+                ].map(tab => (
+                  <button
+                    key={tab.id}
+                    onClick={() => setVocabLanguageFilter(tab.id)}
+                    style={{
+                      padding: '6px 12px', borderRadius: '8px', border: 'none',
+                      fontSize: '0.8rem', fontWeight: '600', cursor: 'pointer',
+                      background: vocabLanguageFilter === tab.id ? 'rgba(255, 179, 64, 0.2)' : 'transparent',
+                      color: vocabLanguageFilter === tab.id ? '#FFB340' : theme.textSecondary,
+                      transition: 'all 0.15s ease'
+                    }}
+                  >
+                    {tab.label}
+                  </button>
+                ))}
+              </div>
+
+              {/* Buscador */}
+              <div style={{
+                display: 'flex', alignItems: 'center', gap: '8px',
+                background: 'rgba(255,255,255,0.05)', borderRadius: '10px',
+                padding: '6px 12px', flex: '1 1 200px', maxWidth: '300px',
+                border: '1px solid rgba(255,255,255,0.06)'
+              }}>
+                <SearchSmallIcon />
+                <input
+                  type="text"
+                  placeholder="Filter words..."
+                  value={vocabSearchQuery}
+                  onChange={(e) => setVocabSearchQuery(e.target.value)}
+                  style={{
+                    background: 'transparent', border: 'none', outline: 'none',
+                    color: '#fff', fontSize: '0.82rem', width: '100%'
+                  }}
+                />
+                {vocabSearchQuery && (
+                  <button 
+                    onClick={() => setVocabSearchQuery('')} 
+                    style={{ background: 'none', border: 'none', color: theme.textSecondary, cursor: 'pointer', padding: 0 }}
+                  >
+                    ×
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {/* Contenido / Tabla de Palabras */}
+            <div style={{ flex: 1, overflowY: 'auto', padding: '0 26px 20px 26px' }}>
+              {(() => {
+                // Unir palabras de word_cache y subrayadas de documentos
+                const vocabMap = new Map();
+
+                // 1. Mapa rápido de palabras en caché por palabra (minúsculas)
+                const cacheByWord = new Map();
+                cachedVocabList.forEach(item => {
+                  const wKey = (item.word || '').toLowerCase();
+                  if (!cacheByWord.has(wKey)) {
+                    cacheByWord.set(wKey, item);
+                  }
+                  const fullKey = `${wKey}_${(item.language || '').toLowerCase()}`;
+                  const tData = item.translation_data || {};
+                  vocabMap.set(fullKey, {
+                    word: item.word,
+                    language: item.language || 'auto',
+                    translation: tData.translation || tData.translation_es || tData.meaning || '—',
+                    grammar: tData.grammar || tData.part_of_speech || 'Vocabulary',
+                    explanation: tData.explanation || tData.definition || '',
+                    sourceDoc: null,
+                    context: tData.context || '',
+                    cachedItem: item
+                  });
+                });
+
+                // 2. Añadir palabras subrayadas de los documentos cargados
+                cloudBooks.forEach(doc => {
+                  if (!doc.content) return;
+                  const parts = doc.content.split('\n---\n');
+                  const hlPart = parts[1] || '';
+                  if (!hlPart) return;
+                  
+                  const words = hlPart.split(',').map(w => w.trim()).filter(Boolean);
+                  const docLang = doc.language || 'auto';
+                  
+                  words.forEach(rawWord => {
+                    if (rawWord.startsWith('phrase:')) {
+                      const phraseParts = rawWord.split(':');
+                      const pText = phraseParts.slice(3).join(':');
+                      const pKey = pText.toLowerCase();
+                      const matchedCache = cacheByWord.get(pKey);
+                      const key = `${pKey}_${(matchedCache?.language || docLang).toLowerCase()}`;
+                      
+                      if (!vocabMap.has(key)) {
+                        const tData = matchedCache?.translation_data || {};
+                        vocabMap.set(key, {
+                          word: pText,
+                          language: matchedCache?.language || docLang,
+                          translation: tData.translation || tData.translation_es || tData.meaning || 'Click to translate',
+                          grammar: tData.grammar || tData.part_of_speech || 'Phrase',
+                          explanation: tData.explanation || tData.definition || '',
+                          sourceDoc: doc.title,
+                          context: tData.context || '',
+                          cachedItem: matchedCache || null
+                        });
+                      } else {
+                        const existing = vocabMap.get(key);
+                        if (!existing.sourceDoc) existing.sourceDoc = doc.title;
+                        if (!existing.cachedItem && matchedCache) {
+                          existing.cachedItem = matchedCache;
+                          const tData = matchedCache.translation_data || {};
+                          if (existing.translation === 'Click to translate') {
+                            existing.translation = tData.translation || tData.translation_es || tData.meaning || '—';
+                          }
+                          if (tData.grammar) existing.grammar = tData.grammar;
+                        }
+                      }
+                    } else {
+                      const clean = rawWord.toLowerCase();
+                      const matchedCache = cacheByWord.get(clean);
+                      const key = `${clean}_${(matchedCache?.language || docLang).toLowerCase()}`;
+                      
+                      if (!vocabMap.has(key)) {
+                        const tData = matchedCache?.translation_data || {};
+                        vocabMap.set(key, {
+                          word: rawWord,
+                          language: matchedCache?.language || docLang,
+                          translation: tData.translation || tData.translation_es || tData.meaning || 'Click to translate',
+                          grammar: tData.grammar || tData.part_of_speech || 'Word',
+                          explanation: tData.explanation || tData.definition || '',
+                          sourceDoc: doc.title,
+                          context: tData.context || '',
+                          cachedItem: matchedCache || null
+                        });
+                      } else {
+                        const existing = vocabMap.get(key);
+                        if (!existing.sourceDoc) existing.sourceDoc = doc.title;
+                        if (!existing.cachedItem && matchedCache) {
+                          existing.cachedItem = matchedCache;
+                          const tData = matchedCache.translation_data || {};
+                          if (existing.translation === 'Click to translate') {
+                            existing.translation = tData.translation || tData.translation_es || tData.meaning || '—';
+                          }
+                          if (tData.grammar) existing.grammar = tData.grammar;
+                        }
+                      }
+                    }
+                  });
+                });
+
+                let items = Array.from(vocabMap.values());
+
+                // Filtrar por idioma
+                if (vocabLanguageFilter !== 'all') {
+                  items = items.filter(i => {
+                    const l = (i.language || '').toLowerCase();
+                    return l === vocabLanguageFilter || l.startsWith(vocabLanguageFilter);
+                  });
+                }
+
+                // Filtrar por término de búsqueda
+                if (vocabSearchQuery.trim()) {
+                  const q = vocabSearchQuery.trim().toLowerCase();
+                  items = items.filter(i => 
+                    i.word.toLowerCase().includes(q) || 
+                    (i.translation && i.translation.toLowerCase().includes(q)) ||
+                    (i.sourceDoc && i.sourceDoc.toLowerCase().includes(q))
+                  );
+                }
+
+                if (isLoadingVocab && items.length === 0) {
+                  return (
+                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '60px 0', gap: '12px', color: theme.textSecondary }}>
+                      <SpinnerIcon />
+                      <span style={{ fontSize: '0.85rem' }}>Loading vocabulary...</span>
+                    </div>
+                  );
+                }
+
+                if (items.length === 0) {
+                  return (
+                    <div style={{ textAlign: 'center', padding: '60px 20px', color: theme.textSecondary }}>
+                      <div style={{ fontSize: '2rem', marginBottom: '10px' }}>📖</div>
+                      <p style={{ margin: 0, fontSize: '0.95rem', fontWeight: '500', color: '#fff' }}>No words found</p>
+                      <p style={{ margin: '6px 0 0 0', fontSize: '0.8rem' }}>
+                        {vocabSearchQuery ? "No matches for your search." : "Highlight or click any word while reading to save it here automatically."}
+                      </p>
+                    </div>
+                  );
+                }
+
+                return (
+                  <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', marginTop: '10px' }}>
+                    <thead>
+                      <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
+                        <th style={{ padding: '12px 10px', fontSize: '0.75rem', fontWeight: '700', color: theme.textSecondary, textTransform: 'uppercase', letterSpacing: '0.8px' }}>
+                          Word / Expression ({items.length})
+                        </th>
+                        <th style={{ padding: '12px 10px', fontSize: '0.75rem', fontWeight: '700', color: theme.textSecondary, textTransform: 'uppercase', letterSpacing: '0.8px' }}>
+                          Translation & Definition
+                        </th>
+                        <th style={{ padding: '12px 10px', fontSize: '0.75rem', fontWeight: '700', color: theme.textSecondary, textTransform: 'uppercase', letterSpacing: '0.8px' }}>
+                          Language
+                        </th>
+                        <th style={{ padding: '12px 10px', fontSize: '0.75rem', fontWeight: '700', color: theme.textSecondary, textTransform: 'uppercase', letterSpacing: '0.8px', textAlign: 'right' }}>
+                          Action
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {items.map((item, idx) => {
+                        const isTranslated = item.translation && item.translation !== 'Click to translate' && item.translation !== '—';
+                        return (
+                          <tr
+                            key={idx}
+                            onClick={() => {
+                              // Al hacer clic, abrir detalle de la palabra sin cerrar el modal de vocabulario
+                              if (item.cachedItem && item.cachedItem.translation_data) {
+                                setSelectedWord({
+                                  word: item.word,
+                                  language: item.language,
+                                  ...item.cachedItem.translation_data,
+                                  fromCache: true
+                                });
+                              } else {
+                                handleWordClick(item.word, item.context || "");
+                              }
+                            }}
+                            style={{
+                              borderBottom: '1px solid rgba(255,255,255,0.03)',
+                              cursor: 'pointer', transition: 'background 0.15s'
+                            }}
+                            onMouseOver={(e) => e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.03)'}
+                            onMouseOut={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+                          >
+                            {/* Columna Palabra */}
+                            <td style={{ padding: '14px 10px', verticalAlign: 'middle' }}>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                <span style={{ fontSize: '1rem', fontWeight: '600', color: '#FFD60A' }}>
+                                  {item.word}
+                                </span>
+                                {item.grammar && (
+                                  <span style={{
+                                    fontSize: '0.65rem', padding: '2px 6px', borderRadius: '4px',
+                                    background: 'rgba(255,255,255,0.06)', color: theme.textSecondary,
+                                    textTransform: 'uppercase', fontWeight: '600'
+                                  }}>
+                                    {item.grammar}
+                                  </span>
+                                )}
+                              </div>
+                              {item.sourceDoc && (
+                                <div style={{ fontSize: '0.72rem', color: theme.textSecondary, marginTop: '2px' }}>
+                                  📄 {item.sourceDoc}
+                                </div>
+                              )}
+                            </td>
+
+                            {/* Columna Traducción */}
+                            <td style={{ padding: '14px 10px', verticalAlign: 'middle' }}>
+                              <div style={{ fontSize: '0.9rem', color: isTranslated ? '#fff' : theme.textSecondary, fontWeight: isTranslated ? '500' : '400' }}>
+                                {item.translation}
+                              </div>
+                              {item.explanation && (
+                                <div style={{ fontSize: '0.75rem', color: theme.textSecondary, marginTop: '2px', maxWidth: '380px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                  {item.explanation}
+                                </div>
+                              )}
+                            </td>
+
+                            {/* Columna Idioma */}
+                            <td style={{ padding: '14px 10px', verticalAlign: 'middle' }}>
+                              <span style={{
+                                fontSize: '0.75rem', fontWeight: '700', padding: '3px 8px', borderRadius: '6px',
+                                background: item.language === 'fr' ? 'rgba(10, 132, 255, 0.15)' : 'rgba(255,255,255,0.06)',
+                                color: item.language === 'fr' ? '#0A84FF' : '#aaa', textTransform: 'uppercase'
+                              }}>
+                                {item.language}
+                              </span>
+                            </td>
+
+                            {/* Columna Acción / Bocina */}
+                            <td style={{ padding: '14px 10px', verticalAlign: 'middle', textAlign: 'right' }}>
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  playWordAudio(item.word, item.language);
+                                }}
+                                className="icon-btn"
+                                title="Listen pronunciation"
+                                style={{
+                                  padding: '6px', borderRadius: '50%',
+                                  background: 'rgba(255,255,255,0.05)', display: 'inline-flex'
+                                }}
+                              >
+                                <SpeakerIcon />
+                              </button>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                );
+              })()}
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* MODAL PALABRA */}
       {selectedWord && (
           <>
@@ -4804,11 +5605,11 @@ function App() {
               if (Date.now() - modalOpenedTime.current > 400) {
                 handleCloseModal();
               }
-            }} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.1)', zIndex: 1100 }} />
+            }} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', zIndex: 3100 }} />
             <div style={{ 
                 position: 'fixed', bottom: 0, left: 0, right: 0, 
                 backgroundColor: theme.modalBg, backdropFilter: 'blur(30px)', WebkitBackdropFilter: 'blur(30px)',
-                borderRadius: '24px 24px 0 0', padding: '30px 24px 50px 24px', zIndex: 1200, 
+                borderRadius: '24px 24px 0 0', padding: '30px 24px 50px 24px', zIndex: 3200, 
                 boxShadow: '0 -10px 40px rgba(0,0,0,0.5)', borderTop: `1px solid rgba(255,255,255,0.1)`, 
                 animation: 'slideUp 0.3s cubic-bezier(0.2, 0.8, 0.2, 1)', maxHeight: '80vh', overflowY: 'auto' 
             }}>
@@ -4819,7 +5620,7 @@ function App() {
                                 {selectedWord.word}
                             </h2>
                             {/* BOTÓN DE AUDIO (SPEAKER) */}
-                            <button onClick={() => playWordAudio(selectedWord.word)} className="icon-btn" style={{ background: 'rgba(255,255,255,0.1)', padding: '8px', borderRadius: '50%' }}>
+                            <button onClick={() => playWordAudio(selectedWord.word, selectedWord.language)} className="icon-btn" style={{ background: 'rgba(255,255,255,0.1)', padding: '8px', borderRadius: '50%' }}>
                                 <SpeakerIcon />
                             </button>
                         </div>

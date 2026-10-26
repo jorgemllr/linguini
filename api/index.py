@@ -12,7 +12,7 @@ import json
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from database import (
-    init_db, get_all_documents, insert_document, get_cached_word,
+    init_db, get_all_documents, insert_document, get_cached_word, get_all_cached_words,
     insert_cached_word, delete_cached_word, update_document, delete_document, update_document_progress,
     download_from_storage, delete_from_storage, get_public_storage_url
 )
@@ -188,13 +188,19 @@ def update_document_progress_route(doc_id):
 @app.route('/api/word_cache', methods=['GET'])
 def query_word_cache():
     word = request.args.get('word')
-    language = request.args.get('language', 'auto')
+    language = request.args.get('language')
     
+    # Si no se pasa 'word', devolvemos la lista completa de vocabulario (opcionalmente filtrada por idioma)
     if not word:
-        return jsonify({"error": "Falta parámetro 'word'."}), 400
+        try:
+            words = get_all_cached_words(language)
+            return jsonify(words)
+        except Exception as e:
+            print(f"❌ Error al consultar lista de vocabulario: {e}")
+            return jsonify({"error": str(e)}), 500
         
     try:
-        cached = get_cached_word(word, language)
+        cached = get_cached_word(word, language or 'auto')
         if cached:
             return jsonify(cached)
         return jsonify(None) # Devuelve null si no existe, igual que supabase .maybeSingle()

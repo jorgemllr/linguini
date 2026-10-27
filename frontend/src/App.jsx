@@ -5784,10 +5784,11 @@ function App() {
                   }
                   const fullKey = `${wKey}_${(item.language || '').toLowerCase()}`;
                   const tData = item.translation_data || {};
+                  const transVal = tData.es || tData.translation || tData.translation_es || tData.meaning || tData.en || '—';
                   vocabMap.set(fullKey, {
                     word: item.word,
                     language: item.language || 'auto',
-                    translation: tData.translation || tData.translation_es || tData.meaning || '—',
+                    translation: typeof transVal === 'string' ? transVal : JSON.stringify(transVal),
                     grammar: tData.grammar || tData.part_of_speech || 'Vocabulary',
                     explanation: tData.explanation || tData.definition || '',
                     sourceDoc: null,
@@ -5816,10 +5817,11 @@ function App() {
                       
                       if (!vocabMap.has(key)) {
                         const tData = matchedCache?.translation_data || {};
+                        const transVal = tData.es || tData.translation || tData.translation_es || tData.meaning || tData.en || 'Click to translate';
                         vocabMap.set(key, {
                           word: pText,
                           language: matchedCache?.language || docLang,
-                          translation: tData.translation || tData.translation_es || tData.meaning || 'Click to translate',
+                          translation: typeof transVal === 'string' ? transVal : JSON.stringify(transVal),
                           grammar: tData.grammar || tData.part_of_speech || 'Phrase',
                           explanation: tData.explanation || tData.definition || '',
                           sourceDoc: doc.title,
@@ -5833,7 +5835,8 @@ function App() {
                           existing.cachedItem = matchedCache;
                           const tData = matchedCache.translation_data || {};
                           if (existing.translation === 'Click to translate') {
-                            existing.translation = tData.translation || tData.translation_es || tData.meaning || '—';
+                            const transVal = tData.es || tData.translation || tData.translation_es || tData.meaning || tData.en || '—';
+                            existing.translation = typeof transVal === 'string' ? transVal : JSON.stringify(transVal);
                           }
                           if (tData.grammar) existing.grammar = tData.grammar;
                         }
@@ -5845,10 +5848,11 @@ function App() {
                       
                       if (!vocabMap.has(key)) {
                         const tData = matchedCache?.translation_data || {};
+                        const transVal = tData.es || tData.translation || tData.translation_es || tData.meaning || tData.en || 'Click to translate';
                         vocabMap.set(key, {
                           word: rawWord,
                           language: matchedCache?.language || docLang,
-                          translation: tData.translation || tData.translation_es || tData.meaning || 'Click to translate',
+                          translation: typeof transVal === 'string' ? transVal : JSON.stringify(transVal),
                           grammar: tData.grammar || tData.part_of_speech || 'Word',
                           explanation: tData.explanation || tData.definition || '',
                           sourceDoc: doc.title,
@@ -5862,7 +5866,8 @@ function App() {
                           existing.cachedItem = matchedCache;
                           const tData = matchedCache.translation_data || {};
                           if (existing.translation === 'Click to translate') {
-                            existing.translation = tData.translation || tData.translation_es || tData.meaning || '—';
+                            const transVal = tData.es || tData.translation || tData.translation_es || tData.meaning || tData.en || '—';
+                            existing.translation = typeof transVal === 'string' ? transVal : JSON.stringify(transVal);
                           }
                           if (tData.grammar) existing.grammar = tData.grammar;
                         }
@@ -5969,7 +5974,7 @@ function App() {
                             <td style={{ padding: '14px 10px', verticalAlign: 'middle' }}>
                               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                                 <span style={{ fontSize: '1rem', fontWeight: '600', color: '#FFD60A' }}>
-                                  {item.word}
+                                  {typeof item.word === 'string' ? item.word : String(item.word || '')}
                                 </span>
                                 {item.grammar && (
                                   <span style={{
@@ -5977,13 +5982,13 @@ function App() {
                                     background: 'rgba(255,255,255,0.06)', color: theme.textSecondary,
                                     textTransform: 'uppercase', fontWeight: '600'
                                   }}>
-                                    {item.grammar}
+                                    {formatGrammar(item.grammar)}
                                   </span>
                                 )}
                               </div>
                               {item.sourceDoc && (
                                 <div style={{ fontSize: '0.72rem', color: theme.textSecondary, marginTop: '2px' }}>
-                                  📄 {item.sourceDoc}
+                                  📄 {typeof item.sourceDoc === 'string' ? item.sourceDoc : String(item.sourceDoc)}
                                 </div>
                               )}
                             </td>
@@ -5991,11 +5996,11 @@ function App() {
                             {/* Columna Traducción */}
                             <td style={{ padding: '14px 10px', verticalAlign: 'middle' }}>
                               <div style={{ fontSize: '0.9rem', color: isTranslated ? '#fff' : theme.textSecondary, fontWeight: isTranslated ? '500' : '400' }}>
-                                {item.translation}
+                                {typeof item.translation === 'string' ? item.translation : (item.translation ? JSON.stringify(item.translation) : '—')}
                               </div>
                               {item.explanation && (
                                 <div style={{ fontSize: '0.75rem', color: theme.textSecondary, marginTop: '2px', maxWidth: '380px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                                  {item.explanation}
+                                  {typeof item.explanation === 'string' ? item.explanation : JSON.stringify(item.explanation)}
                                 </div>
                               )}
                             </td>

@@ -71,6 +71,30 @@ const parseAudioSeries = (title) => {
   };
 };
 
+// Formats grammatical explanation, handling both human strings and structured JSON objects
+const formatGrammar = (grammar) => {
+  if (!grammar) return "Vocabulary";
+  if (typeof grammar === 'object') {
+    const parts = [];
+    if (grammar.part_of_speech) parts.push(grammar.part_of_speech);
+    if (grammar.tense) parts.push(grammar.tense);
+    if (grammar.verb_root) parts.push(`root: ${grammar.verb_root}`);
+    if (parts.length > 0) return parts.join(' • ');
+    return Object.values(grammar).filter(v => typeof v === 'string').join(' • ') || "Vocabulary";
+  }
+  if (typeof grammar === 'string') {
+    const trimmed = grammar.trim();
+    if (trimmed.startsWith('{') && trimmed.endsWith('}')) {
+      try {
+        const parsed = JSON.parse(trimmed);
+        return formatGrammar(parsed);
+      } catch (_) {}
+    }
+    return trimmed;
+  }
+  return String(grammar);
+};
+
 // Groups a list of audio documents by their series title
 const groupAudiobooks = (audioList) => {
   const map = new Map();
@@ -159,10 +183,11 @@ const fetchFromSupabase = async (endpoint, options = {}) => {
   });
 };
 
-// Direct client-side Gemini fallback for word analysis if backend server is unreachable
+// Direct client-side AI analysis with OpenAI (gpt-4o-mini) and Gemini fallback
 const analyzeWordViaGemini = async (word, context, langCode, mode) => {
-  const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
-  if (!apiKey) throw new Error("No Gemini API key available");
+  const openaiKey = import.meta.env.VITE_OPENAI_API_KEY;
+  const geminiKey = import.meta.env.VITE_GEMINI_API_KEY;
+
   const langNames = { de: 'German', en: 'English', fr: 'French', es: 'Spanish', it: 'Italian', pt: 'Portuguese' };
   const langName = langNames[(langCode || 'auto').toLowerCase()] || 'German';
   const prompt = mode === 'simple'
@@ -174,28 +199,97 @@ Translate "${word}" IN THIS CONTEXT and return a valid JSON object with exactly:
 "grammar": ""
 "alternatives": []
 "examples": []`
-    : `Act as an expert ${langName} teacher. The user does not understand "${word}".
+    : `Act as an expert ${langName} teacher. The user wants to understand "${word}".
 Context: "...${context || ''}..."
 Analyze "${word}" IN THIS CONTEXT and return a valid JSON object with exactly:
 "es": Main Spanish translation adapted to this context.
 "en": Main English translation adapted to this context.
-"grammar": Brief grammatical explanation (part of speech, tense, verb root).
+"grammar": Detailed grammatical and context explanation in Spanish (part of speech, gender/number or tense/conjugation, root form, and how it is functioning in this specific sentence).
+"definition": Clear, dictionary-style definition in Spanish explaining the meaning in this context.
 "alternatives": Array of strings with other key translations or meanings in other contexts (max 2-3).
 "examples": Array of 2 example objects with keys "original" and "es_translation".`;
 
-  const resp = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      contents: [{ parts: [{ text: prompt }] }],
-      generationConfig: { response_mime_type: "application/json" }
-    })
-  });
-  if (!resp.ok) throw new Error(`Gemini API error ${resp.status}`);
-  const data = await resp.json();
-  const rawText = data.candidates?.[0]?.content?.parts?.[0]?.text;
-  if (!rawText) throw new Error("Empty response from Gemini");
-  return JSON.parse(rawText);
+  const sanitizeAiResult = (raw) => {
+    try {
+      let parsed = typeof raw === 'string' ? JSON.parse(raw) : raw;
+      if (!parsed || typeof parsed !== 'object') {
+        parsed = { es: String(raw || ''), en: String(raw || '') };
+      }
+      return {
+        es: typeof parsed.es === 'string' ? parsed.es : (parsed.es ? JSON.stringify(parsed.es) : ''),
+        en: typeof parsed.en === 'string' ? parsed.en : (parsed.en ? JSON.stringify(parsed.en) : ''),
+        grammar: typeof parsed.grammar === 'string' ? parsed.grammar : (parsed.grammar ? JSON.stringify(parsed.grammar) : ''),
+        definition: typeof parsed.definition === 'string' ? parsed.definition : '',
+        alternatives: Array.isArray(parsed.alternatives)
+          ? parsed.alternatives.map(a => typeof a === 'string' ? a : (a?.translation || JSON.stringify(a)))
+          : (typeof parsed.alternatives === 'string' && parsed.alternatives ? [parsed.alternatives] : []),
+        examples: Array.isArray(parsed.examples)
+          ? parsed.examples.map(ex => {
+              if (typeof ex === 'string') return { original: ex, es_translation: '' };
+              if (ex && typeof ex === 'object') {
+                return {
+                  original: typeof ex.original === 'string' ? ex.original : (ex.text || ''),
+                  es_translation: typeof ex.es_translation === 'string' ? ex.es_translation : (ex.translation || '')
+                };
+              }
+              return { original: String(ex || ''), es_translation: '' };
+            })
+          : []
+      };
+    } catch (err) {
+      return { es: word, en: word, grammar: '', definition: '', alternatives: [], examples: [] };
+    }
+  };
+
+  // 1. Try OpenAI (gpt-4o-mini) first - fast, reliable, paid tier with active quota
+  if (openaiKey) {
+    try {
+      const resp = await fetch('https://api.openai.com/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${openaiKey}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          model: 'gpt-4o-mini',
+          response_format: { type: 'json_object' },
+          messages: [
+            { role: 'system', content: 'You are an expert language tutor. Output valid JSON.' },
+            { role: 'user', content: prompt }
+          ]
+        })
+      });
+      if (resp.ok) {
+        const data = await resp.json();
+        const content = data.choices?.[0]?.message?.content;
+        if (content) return sanitizeAiResult(content);
+      }
+    } catch (e) {
+      console.warn("OpenAI client fallback failed, attempting Gemini:", e);
+    }
+  }
+
+  // 2. Fallback to Gemini API if OpenAI is unavailable
+  if (geminiKey) {
+    const resp = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${geminiKey}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        contents: [{ parts: [{ text: prompt }] }],
+        generationConfig: { response_mime_type: "application/json" }
+      })
+    });
+    if (!resp.ok) {
+      const errJson = await resp.json().catch(() => ({}));
+      throw new Error(`AI error: ${errJson.error?.message || resp.status}`);
+    }
+    const data = await resp.json();
+    const rawText = data.candidates?.[0]?.content?.parts?.[0]?.text;
+    if (!rawText) throw new Error("Empty response from AI");
+    return sanitizeAiResult(rawText);
+  }
+
+  throw new Error("No OpenAI or Gemini API key available");
 };
 
 // --- DATABASE OFFLINE STORAGE (INDEXEDDB) ---
@@ -477,8 +571,21 @@ function App() {
     return currentDocVal?.scroll_position || 0.0;
   };
 
-  const [currentPage, setCurrentPage] = useState(1);
-  const currentPageRef = useRef(1);
+  const getInitialPage = (initDoc) => {
+    if (initDoc && initDoc.id) {
+      const localPage = localStorage.getItem(`current-page-${initDoc.id}`);
+      if (localPage) {
+        const parsed = parseInt(localPage, 10);
+        if (!isNaN(parsed) && parsed > 0) return parsed;
+      }
+      if (initDoc.current_page > 0) return initDoc.current_page;
+    }
+    return 1;
+  };
+
+  const initialPageVal = getInitialPage(initialDocVal);
+  const [currentPage, setCurrentPage] = useState(initialPageVal);
+  const currentPageRef = useRef(initialPageVal);
   const pageHeightsRef = useRef({});
   const isRestoringScrollRef = useRef(true);
   const isInitialDocsLoadedRef = useRef(false);
@@ -623,6 +730,8 @@ function App() {
   const lastProcessedIdx = useRef(null);
   const isPopupClosedByUser = useRef(false);
   const modalOpenedTime = useRef(0);
+  const wordModalRef = useRef(null);
+  const [wordModalHeight, setWordModalHeight] = useState(0);
 
   // --- CLOUD UPLOAD STATE ---
   const [audioFiles, setAudioFiles] = useState([]);
@@ -654,9 +763,18 @@ function App() {
     localStorage.setItem('vocab-detailed-mode', isDetailedMode.toString());
   }, [isDetailedMode]);
 
+  // --- ESTADO DE LIBROS/DOCUMENTOS LEÍDOS (COMPLETADOS) ---
+  const [readDocs, setReadDocs] = useState(() => {
+    try {
+      const saved = localStorage.getItem('app-read-docs');
+      return saved ? JSON.parse(saved) : {};
+    } catch(e) { return {}; }
+  });
+
   // --- VOCABULARY LIST MODAL & MANAGEMENT ---
   const [showVocabModal, setShowVocabModal] = useState(false);
   const [vocabLanguageFilter, setVocabLanguageFilter] = useState('all');
+  const [vocabSourceDocFilter, setVocabSourceDocFilter] = useState('all');
   const [vocabSearchQuery, setVocabSearchQuery] = useState('');
   const [cachedVocabList, setCachedVocabList] = useState([]);
   const [isLoadingVocab, setIsLoadingVocab] = useState(false);
@@ -729,9 +847,8 @@ function App() {
     pageHeightsRef.current = {};
   }, [currentDoc?.id]);
 
-  const syncReadingProgress = async (docId, pageNum, scrollY, force = false) => {
+  const syncReadingProgress = async (docId, pageNum, scrollY) => {
     if (!docId || docId === 'demo') return;
-    if (!force) return; // Disable automatic background writes
     try {
       const res = await fetch(getApiUrl(`/api/documents/${docId}/progress`), {
         method: 'PUT',
@@ -751,9 +868,45 @@ function App() {
     }
   };
 
-  const syncGlobalSettings = async (docId, activeAudioObj, force = false) => {
+  const saveDocumentHighlights = async (docId, newContent) => {
+    if (!docId || docId === 'demo') return;
+    try {
+      const res = await fetch(getApiUrl(`/api/documents/${docId}`), {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ content: newContent })
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    } catch (err) {
+      if (SUPABASE_URL && SUPABASE_ANON_KEY) {
+        await fetchFromSupabase(`documents?id=eq.${docId}`, {
+          method: 'PATCH',
+          body: JSON.stringify({ content: newContent })
+        }).catch(e => {
+          console.warn("Supabase highlights PATCH fallback error:", e);
+          const pendingDocs = localStorage.getItem('pending-document-updates');
+          let docsMap = {};
+          try {
+            if (pendingDocs) docsMap = JSON.parse(pendingDocs);
+          } catch (ex) {}
+          docsMap[docId] = newContent;
+          localStorage.setItem('pending-document-updates', JSON.stringify(docsMap));
+        });
+      } else {
+        console.warn("Error saving highlight to backend, queuing update:", err);
+        const pendingDocs = localStorage.getItem('pending-document-updates');
+        let docsMap = {};
+        try {
+          if (pendingDocs) docsMap = JSON.parse(pendingDocs);
+        } catch (ex) {}
+        docsMap[docId] = newContent;
+        localStorage.setItem('pending-document-updates', JSON.stringify(docsMap));
+      }
+    }
+  };
+
+  const syncGlobalSettings = async (docId, activeAudioObj) => {
     if (!docId || docId === 'demo' || docId === 'global_settings') return;
-    if (!force) return; // Disable automatic background writes
     try {
       const globalDoc = documents.find(d => d.id === 'global_settings');
       let currentPayload = {};
@@ -831,8 +984,48 @@ function App() {
           method: 'PATCH',
           body: JSON.stringify({ content: JSON.stringify(updatedPayload) })
         }).catch(e => console.warn("Supabase folders fallback error:", e));
-      } else {
-        console.warn("⚠️ Error syncing folders to Supabase:", err);
+      }
+    }
+  };
+
+  const toggleReadDoc = async (docId) => {
+    if (!docId) return;
+    const isNowRead = !readDocs[docId];
+    const updatedReadDocs = { ...readDocs, [docId]: isNowRead };
+    setReadDocs(updatedReadDocs);
+    localStorage.setItem('app-read-docs', JSON.stringify(updatedReadDocs));
+
+    try {
+      const globalDoc = documents.find(d => d.id === 'global_settings');
+      let currentPayload = {};
+      if (globalDoc && globalDoc.content) {
+        try { currentPayload = JSON.parse(globalDoc.content); } catch (e) {}
+      }
+      const updatedPayload = {
+        ...currentPayload,
+        read_docs: updatedReadDocs
+      };
+      const res = await fetch(getApiUrl('/api/documents/global_settings'), {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ content: JSON.stringify(updatedPayload) })
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    } catch (err) {
+      if (SUPABASE_URL && SUPABASE_ANON_KEY) {
+        const globalDoc = documents.find(d => d.id === 'global_settings');
+        let currentPayload = {};
+        if (globalDoc && globalDoc.content) {
+          try { currentPayload = JSON.parse(globalDoc.content); } catch (e) {}
+        }
+        const updatedPayload = {
+          ...currentPayload,
+          read_docs: updatedReadDocs
+        };
+        await fetchFromSupabase(`documents?id=eq.global_settings`, {
+          method: 'PATCH',
+          body: JSON.stringify({ content: JSON.stringify(updatedPayload) })
+        }).catch(e => console.warn("Supabase read_docs fallback error:", e));
       }
     }
   };
@@ -1011,8 +1204,34 @@ function App() {
     setShowBookmarkModal(false);
   };
 
+  // State to track pending offline sync items
+  const [pendingSyncCount, setPendingSyncCount] = useState(0);
+  const [pendingSyncWords, setPendingSyncWords] = useState([]);
+  const [showPendingTooltip, setShowPendingTooltip] = useState(false);
+  const [isSyncingOfflineQueue, setIsSyncingOfflineQueue] = useState(false);
+  const isSyncingRef = useRef(false);
+
+  const updatePendingCount = useCallback(() => {
+    let words = [];
+    try {
+      const pendingTrans = localStorage.getItem('pending-offline-translations');
+      if (pendingTrans) {
+        const list = JSON.parse(pendingTrans);
+        if (Array.isArray(list)) {
+          words = list.map(item => item.word);
+        }
+      }
+    } catch (_) {}
+    setPendingSyncCount(words.length);
+    setPendingSyncWords(words);
+  }, []);
+
   const processPendingQueue = useCallback(async () => {
-    if (!navigator.onLine) return;
+    if (!navigator.onLine || isManualOffline) return;
+    if (isSyncingRef.current) return; // Prevent bouncing / duplicate parallel executions
+    isSyncingRef.current = true;
+    setIsSyncingOfflineQueue(true);
+    let successfullySyncedWords = 0;
     
     // 1. Process pending document updates
     const pendingDocs = localStorage.getItem('pending-document-updates');
@@ -1023,12 +1242,27 @@ function App() {
         for (const docId of keys) {
           const content = docsMap[docId];
           try {
-            const res = await fetch(getApiUrl(`/api/documents/${docId}`), {
-              method: 'PUT',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ content })
-            });
-            if (res.ok) {
+            let synced = false;
+            try {
+              const res = await fetch(getApiUrl(`/api/documents/${docId}`), {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ content })
+              });
+              if (res.ok) synced = true;
+            } catch (_) {}
+
+            // Direct Supabase fallback if local/serverless API is unavailable
+            if (!synced) {
+              const sRes = await fetchFromSupabase(`documents?id=eq.${docId}`, {
+                method: 'PATCH',
+                headers: { 'Prefer': 'return=minimal' },
+                body: JSON.stringify({ content })
+              });
+              if (sRes && sRes.ok) synced = true;
+            }
+
+            if (synced) {
               delete docsMap[docId];
             }
           } catch (e) {
@@ -1056,27 +1290,81 @@ function App() {
         for (const item of list) {
           try {
             const { word, context, language, mode } = item;
-            const API_URL = getApiUrl('/api/analyze');
-            const res = await fetch(API_URL, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ word, context, language, mode })
-            });
-            if (!res.ok) throw new Error("API call failed");
-            const apiData = await res.json();
-            if (apiData.error) throw new Error(apiData.error);
+            let apiData = null;
+
+            // Try backend API first with 3s timeout
+            try {
+              const API_URL = getApiUrl('/api/analyze');
+              const controller = new AbortController();
+              const timeoutId = setTimeout(() => controller.abort(), 3000);
+              const res = await fetch(API_URL, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                signal: controller.signal,
+                body: JSON.stringify({ word, context, language, mode })
+              });
+              clearTimeout(timeoutId);
+              if (res.ok) {
+                const parsed = await res.json();
+                if (!parsed.error) apiData = parsed;
+              }
+            } catch (_) {}
+
+            // Direct Gemini AI fallback if API is unreachable or times out
+            if (!apiData) {
+              apiData = await analyzeWordViaGemini(
+                word,
+                context,
+                language || 'auto',
+                mode || 'simple'
+              );
+            }
+
+            if (!apiData) throw new Error("Could not analyze word via API or direct Gemini");
             
-            // Save to SQLite/word cache
-            await fetch(getApiUrl('/api/word_cache'), {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                word: word,
-                language: language,
-                translation_data: apiData
-              })
+            // Save to word cache: try backend first, fallback directly to Supabase
+            let saved = false;
+            try {
+              const cRes = await fetch(getApiUrl('/api/word_cache'), {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  word: word,
+                  language: language || 'auto',
+                  translation_data: apiData
+                })
+              });
+              if (cRes.ok) saved = true;
+            } catch (_) {}
+
+            if (!saved) {
+              await fetchFromSupabase('word_cache', {
+                method: 'POST',
+                headers: { 'Prefer': 'resolution=merge-duplicates,return=representation' },
+                body: JSON.stringify({
+                  word: word.toLowerCase(),
+                  language: (language || 'fr').toLowerCase(),
+                  translation_data: apiData
+                })
+              });
+            }
+
+            // Immediately update live vocabulary state if open
+            setCachedVocabList(prev => {
+              if (prev.some(v => v.word.toLowerCase() === word.toLowerCase())) return prev;
+              return [{ word, language: (language || 'fr').toLowerCase(), translation_data: apiData }, ...prev];
             });
-            console.log("Processed offline word successfully:", word);
+
+            // If this word is currently selected in modal, update modal view with full translation
+            setSelectedWord(curr => {
+              if (curr && curr.word.toLowerCase() === word.toLowerCase()) {
+                return { word: curr.word, ...apiData, associatedPhrase: curr.associatedPhrase, fromCache: true, isOfflineSaved: false };
+              }
+              return curr;
+            });
+
+            successfullySyncedWords++;
+            console.log("Processed and permanently saved offline word:", word);
           } catch (e) {
             console.warn("Error re-attempting offline translation for:", item.word, e);
             remaining.push(item);
@@ -1092,18 +1380,30 @@ function App() {
         console.error("Error analyzing pending offline translations:", e);
       }
     }
-  }, []);
+
+    isSyncingRef.current = false;
+    updatePendingCount();
+    setIsSyncingOfflineQueue(false);
+
+    if (successfullySyncedWords > 0) {
+      showToast(`☁️ Sincronizadas ${successfullySyncedWords} palabra(s) en la nube`);
+    }
+  }, [isManualOffline, updatePendingCount, showToast]);
 
   // Listen for online events to flush offline queue
   useEffect(() => {
-    window.addEventListener('online', processPendingQueue);
-    if (navigator.onLine) {
+    updatePendingCount();
+    const handleOnline = () => {
+      processPendingQueue();
+    };
+    window.addEventListener('online', handleOnline);
+    if (navigator.onLine && !isManualOffline) {
       processPendingQueue();
     }
     return () => {
-      window.removeEventListener('online', processPendingQueue);
+      window.removeEventListener('online', handleOnline);
     };
-  }, [processPendingQueue]);
+  }, [processPendingQueue, isManualOffline, updatePendingCount]);
 
   const downloadAudio = async (url, e) => {
     e.stopPropagation();
@@ -1416,6 +1716,10 @@ function App() {
                   setDocFolders(parsed.doc_folders);
                   localStorage.setItem('app-doc-folders', JSON.stringify(parsed.doc_folders));
                 }
+                if (parsed.read_docs && typeof parsed.read_docs === 'object') {
+                  setReadDocs(parsed.read_docs);
+                  localStorage.setItem('app-read-docs', JSON.stringify(parsed.read_docs));
+                }
               } catch (e) {
                 console.warn("Failed to parse global settings:", e);
               }
@@ -1471,9 +1775,7 @@ function App() {
                 } catch (e) {}
               }
             }
-            if (!resolvedAudio && demoDoc.audio_url) {
-              resolvedAudio = { url: demoDoc.audio_url, title: demoDoc.title };
-            }
+            // Do not force demoDoc.audio_url if there was no active audio selected by user
 
             if (resolvedAudio) {
               setActiveAudio(resolvedAudio);
@@ -1491,26 +1793,24 @@ function App() {
               }
             }
 
-            // Restore active document
+            // Restore active document (Prioritize local storage if user was reading locally)
             let resolvedDoc = null;
-            if (activeDocId) {
-              resolvedDoc = merged.find(d => d.id === activeDocId);
-            }
-            if (!resolvedDoc) {
-              const lastDoc = localStorage.getItem('last-opened-doc');
-              if (lastDoc) {
-                try {
-                  const parsed = JSON.parse(lastDoc);
-                  if (parsed && parsed.id) resolvedDoc = merged.find(d => d.id === parsed.id);
-                } catch (e) {}
-              }
+            const lastDocLocal = localStorage.getItem('last-opened-doc');
+            if (lastDocLocal) {
+              try {
+                const parsed = JSON.parse(lastDocLocal);
+                if (parsed && parsed.id) resolvedDoc = merged.find(d => d.id === parsed.id);
+              } catch (e) {}
             }
             if (!resolvedDoc) {
               const lastDocId = localStorage.getItem('last-opened-doc-id');
               if (lastDocId) resolvedDoc = merged.find(d => d.id === lastDocId);
             }
+            if (!resolvedDoc && activeDocId) {
+              resolvedDoc = merged.find(d => d.id === activeDocId);
+            }
             if (!resolvedDoc) {
-              resolvedDoc = merged[0] || demoDoc;
+              resolvedDoc = merged.find(d => d.language !== 'audio' && d.language !== 'system') || merged[0] || demoDoc;
             }
 
             if (resolvedDoc) {
@@ -1518,15 +1818,28 @@ function App() {
               localStorage.setItem('last-opened-doc', JSON.stringify(resolvedDoc));
               localStorage.setItem('last-opened-doc-id', resolvedDoc.id);
               
-              const targetPage = resolvedDoc.current_page || 1;
-              const targetScroll = resolvedDoc.scroll_position || 0.0;
+              // Determinar la página y scroll exactos: verificar localStorage si es más reciente
+              let targetPage = resolvedDoc.current_page || 1;
+              let targetScroll = resolvedDoc.scroll_position || 0.0;
+              const localPage = localStorage.getItem(`current-page-${resolvedDoc.id}`);
+              const localScroll = localStorage.getItem(`scroll-position-${resolvedDoc.id}`);
+              if (localPage) {
+                const parsedLp = parseInt(localPage, 10);
+                if (!isNaN(parsedLp) && parsedLp > 0) targetPage = parsedLp;
+              }
+              if (localScroll) {
+                const parsedLs = parseFloat(localScroll);
+                if (!isNaN(parsedLs)) targetScroll = parsedLs;
+              }
+
               restorePageScroll(targetPage, targetScroll, resolvedDoc);
 
-              // Auto-decouple: only activate audio if the document actually has audio
+              // Auto-decouple: only activate audio if the document actually has audio or if the last audio matches this doc
               const docAudio = findAudioForDoc(resolvedDoc, merged);
               if (docAudio) {
                 setActiveAudio(docAudio);
               } else {
+                // If this text has no audio, do not play or load unrelated audiobooks
                 setActiveAudio(null);
                 setIsPlaying(false);
               }
@@ -1985,21 +2298,6 @@ function App() {
     }
   }, [playbackRate, activeAudio]);
 
-  // Restaurar el último audiolibro activo al montar la PWA
-  useEffect(() => {
-    const lastAudio = localStorage.getItem('last-active-audio');
-    if (lastAudio) {
-      try {
-        const parsed = JSON.parse(lastAudio);
-        if (parsed && parsed.url && parsed.title) {
-          setActiveAudio(parsed);
-        }
-      } catch (e) {
-        console.warn("No se pudo restaurar el último audio activo:", e);
-      }
-    }
-  }, []);
-
   // Guardar el último audiolibro activo cuando cambie
   useEffect(() => {
     if (activeAudio) {
@@ -2449,13 +2747,7 @@ function App() {
           setCurrentDoc(updatedDoc);
           setDocuments(prev => prev.map(d => d.id === currentDoc.id ? updatedDoc : d));
           
-          if (currentDoc.id !== 'demo') {
-            fetch(getApiUrl(`/api/documents/${currentDoc.id}`), {
-              method: 'PUT',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ content: newContent })
-            }).catch(err => console.warn("Error updating document highlights on cancel phrase:", err));
-          }
+          saveDocumentHighlights(currentDoc.id, newContent);
         }
       } else if (clickedWord) {
         // Unhighlight the word in the DOM immediately
@@ -2488,20 +2780,37 @@ function App() {
           setCurrentDoc(updatedDoc);
           setDocuments(prev => prev.map(d => d.id === currentDoc.id ? updatedDoc : d));
           
-          if (currentDoc.id !== 'demo') {
-            fetch(getApiUrl(`/api/documents/${currentDoc.id}`), {
-              method: 'PUT',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ content: newContent })
-            }).catch(err => console.warn("Error updating document highlights on cancel word:", err));
-          }
+          saveDocumentHighlights(currentDoc.id, newContent);
         }
       }
     }
     
     setSelectedWord(null);
+    setWordModalHeight(0);
     setIsLoading(false);
   }, [isLoading, selectedWord, currentDoc]);
+
+  // Medir dinámicamente la altura del modal de palabra para desplazar el reproductor
+  useEffect(() => {
+    if (!selectedWord) {
+      setWordModalHeight(0);
+      return;
+    }
+    const updateModalHeight = () => {
+      if (wordModalRef.current) {
+        setWordModalHeight(wordModalRef.current.offsetHeight);
+      }
+    };
+    updateModalHeight();
+    const timer = setTimeout(updateModalHeight, 60);
+    const timer2 = setTimeout(updateModalHeight, 320);
+    window.addEventListener('resize', updateModalHeight);
+    return () => {
+      clearTimeout(timer);
+      clearTimeout(timer2);
+      window.removeEventListener('resize', updateModalHeight);
+    };
+  }, [selectedWord, isLoading, isDetailedMode]);
 
   // 5. LÓGICA DE PALABRA
   const handleWordClick = useCallback(async (clickedWord, surroundingSentence) => {
@@ -2580,22 +2889,7 @@ function App() {
         setCurrentDoc(updatedDoc);
         setDocuments(prev => prev.map(d => d.id === currentDoc.id ? updatedDoc : d));
         
-        if (currentDoc.id !== 'demo') {
-          fetch(getApiUrl(`/api/documents/${currentDoc.id}`), {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ content: newContent })
-          }).catch(err => {
-            console.warn("Error saving highlight to SQLite, queuing update:", err);
-            const pendingDocs = localStorage.getItem('pending-document-updates');
-            let docsMap = {};
-            try {
-              if (pendingDocs) docsMap = JSON.parse(pendingDocs);
-            } catch (ex) {}
-            docsMap[currentDoc.id] = newContent;
-            localStorage.setItem('pending-document-updates', JSON.stringify(docsMap));
-          });
-        }
+        saveDocumentHighlights(currentDoc.id, newContent);
       }
     }
 
@@ -2603,7 +2897,49 @@ function App() {
     modalOpenedTime.current = Date.now();
     setSelectedWord({ word: cleanWord, es: "...", en: "...", examples: [], associatedPhrase });
 
-    // 2. Si el modo offline está activo (manual o por falta de red), ir directo al diccionario local
+    // 1.5. CHECK CACHE FIRST: If the word is already analyzed and cached, show it instantly
+    try {
+        let cached = null;
+        try {
+            const cacheRes = await fetch(getApiUrl(`/api/word_cache?word=${searchWord}&language=${currentDoc?.language || 'auto'}`));
+            if (cacheRes.ok) {
+                cached = await cacheRes.json();
+            }
+        } catch (_) {}
+
+        // Direct fallback to Supabase Cloud Database if local backend is down or on web
+        if (!cached) {
+            try {
+                const sLang = (currentDoc?.language || '').trim().toLowerCase();
+                let filter = `word=ilike.${encodeURIComponent(searchWord)}`;
+                if (sLang && sLang !== 'auto') {
+                    filter += `&language=ilike.${sLang}`;
+                }
+                let sRes = await fetchFromSupabase(`word_cache?${filter}&limit=1`);
+                if ((!sRes || !sRes.ok) && sLang && sLang !== 'auto') {
+                    sRes = await fetchFromSupabase(`word_cache?word=ilike.${encodeURIComponent(searchWord)}&limit=1`);
+                }
+                if (sRes && sRes.ok) {
+                    const sRows = await sRes.json();
+                    if (sRows && sRows.length > 0) {
+                        cached = sRows[0];
+                        if (typeof cached.translation_data === 'string') {
+                            try { cached.translation_data = JSON.parse(cached.translation_data); } catch (_) {}
+                        }
+                    }
+                }
+            } catch (_) {}
+        }
+
+        if (cached && cached.translation_data) {
+            if (isPopupClosedByUser.current) return;
+            setSelectedWord({ word: cleanWord, ...cached.translation_data, associatedPhrase, fromCache: true });
+            setIsLoading(false);
+            return;
+        }
+    } catch (err) { console.error("Error caché:", err); }
+
+    // 2. Si el modo offline está activo (manual o por falta de red), ir directo al diccionario local o encolar
     if (isAppOffline) {
         const pendingTrans = localStorage.getItem('pending-offline-translations');
         let list = [];
@@ -2621,6 +2957,7 @@ function App() {
             mode: isDetailedMode ? 'detailed' : 'simple'
           });
           localStorage.setItem('pending-offline-translations', JSON.stringify(list));
+          updatePendingCount();
         }
 
         // Buscar en el diccionario offline
@@ -2661,49 +2998,6 @@ function App() {
         setIsLoading(false);
         return;
     }
-
-    // CACHÉ
-    try {
-        let cached = null;
-        try {
-            const cacheRes = await fetch(getApiUrl(`/api/word_cache?word=${searchWord}&language=${currentDoc?.language || 'auto'}`));
-            if (cacheRes.ok) {
-                cached = await cacheRes.json();
-            }
-        } catch (_) {}
-
-        // Fallback directo a Supabase Cloud Database si el backend local no responde
-        if (!cached) {
-            try {
-                const sLang = (currentDoc?.language || '').trim().toLowerCase();
-                let filter = `word=ilike.${encodeURIComponent(searchWord)}`;
-                if (sLang && sLang !== 'auto') {
-                    filter += `&language=ilike.${sLang}`;
-                }
-                let sRes = await fetchFromSupabase(`word_cache?${filter}&limit=1`);
-                if ((!sRes || !sRes.ok) && sLang && sLang !== 'auto') {
-                    // Si no hubo coincidencia con el filtro exacto de idioma, buscar solo por palabra
-                    sRes = await fetchFromSupabase(`word_cache?word=ilike.${encodeURIComponent(searchWord)}&limit=1`);
-                }
-                if (sRes && sRes.ok) {
-                    const sRows = await sRes.json();
-                    if (sRows && sRows.length > 0) {
-                        cached = sRows[0];
-                        if (typeof cached.translation_data === 'string') {
-                            try { cached.translation_data = JSON.parse(cached.translation_data); } catch (_) {}
-                        }
-                    }
-                }
-            } catch (_) {}
-        }
-
-        if (cached && cached.translation_data) {
-            if (isPopupClosedByUser.current) return;
-            setSelectedWord({ word: cleanWord, ...cached.translation_data, associatedPhrase, fromCache: true });
-            setIsLoading(false);
-            return;
-        }
-    } catch (err) { console.error("Error caché:", err); }
 
     // API
     if (abortControllerRef.current) {
@@ -2797,6 +3091,7 @@ function App() {
             mode: isDetailedMode ? 'detailed' : 'simple'
           });
           localStorage.setItem('pending-offline-translations', JSON.stringify(list));
+          updatePendingCount();
         }
 
         // Search offline dictionary if loaded
@@ -2841,7 +3136,7 @@ function App() {
         setIsLoading(false);
       }
     }
-  }, [currentDoc, isDetailedMode, offlineDict]);
+  }, [currentDoc, isDetailedMode, offlineDict, updatePendingCount]);
 
   const handleRefreshTranslation = useCallback(async () => {
     if (!selectedWord) return;
@@ -3140,25 +3435,42 @@ function App() {
       setCurrentDoc(updatedDoc);
       setDocuments(prev => prev.map(d => d.id === currentDoc.id ? updatedDoc : d));
       
-      if (currentDoc.id !== 'demo') {
-        // Guardar asíncronamente en SQLite
-        fetch(getApiUrl(`/api/documents/${currentDoc.id}`), {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ content: newContent })
-        }).catch(err => console.warn("Error updating document highlights on delete:", err));
-      }
+      saveDocumentHighlights(currentDoc.id, newContent);
     }
 
     // 2. Eliminar la palabra de la base de datos de caché de vocabulario (word_cache) de fondo (no bloqueante)
     fetch(getApiUrl(`/api/word_cache?word=${searchWord}&language=${currentDoc?.language || 'auto'}`), {
       method: 'DELETE'
     }).catch(err => console.error("Error al eliminar palabra de SQLite:", err));
+
+    // Fallback directo para eliminar de Supabase Cloud
+    fetchFromSupabase(`word_cache?word=ilike.${encodeURIComponent(searchWord)}`, {
+      method: 'DELETE'
+    }).catch(() => {});
+
+    // También remover de la cola pendiente offline si aún no se había subido
+    try {
+      const pendingTrans = localStorage.getItem('pending-offline-translations');
+      if (pendingTrans) {
+        let list = JSON.parse(pendingTrans);
+        if (Array.isArray(list)) {
+          const filtered = list.filter(item => item.word.toLowerCase() !== searchWord);
+          if (filtered.length !== list.length) {
+            if (filtered.length === 0) {
+              localStorage.removeItem('pending-offline-translations');
+            } else {
+              localStorage.setItem('pending-offline-translations', JSON.stringify(filtered));
+            }
+            updatePendingCount();
+          }
+        }
+      }
+    } catch (_) {}
     
     // Si la palabra eliminada es la que está seleccionada actualmente en el popup, limpiamos la selección de inmediato
     setSelectedWord(prev => (prev && prev.word.toLowerCase() === searchWord) ? null : prev);
     console.log(`Eliminada de la base de datos de fondo: ${searchWord}`);
-  }, [currentDoc]);
+  }, [currentDoc, updatePendingCount]);
 
   // --- DRAG SELECTION HANDLERS ---
   const handleWordDragMove = useCallback((clientX, clientY) => {
@@ -3367,14 +3679,7 @@ function App() {
         setCurrentDoc(updatedDoc);
         setDocuments(prev => prev.map(d => d.id === currentDoc.id ? updatedDoc : d));
         
-        if (currentDoc.id !== 'demo') {
-          fetch(getApiUrl(`/api/documents/${currentDoc.id}`), {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ content: newContent })
-          }).catch(err => console.warn("Error saving drag highlight to SQLite:", err));
-        }
-        
+        saveDocumentHighlights(currentDoc.id, newContent);
         return;
       }
       
@@ -3418,13 +3723,7 @@ function App() {
         setCurrentDoc(updatedDoc);
         setDocuments(prev => prev.map(d => d.id === currentDoc.id ? updatedDoc : d));
         
-        if (currentDoc.id !== 'demo') {
-          fetch(getApiUrl(`/api/documents/${currentDoc.id}`), {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ content: newContent })
-          }).catch(err => console.warn("Error saving drag highlight to SQLite:", err));
-        }
+        saveDocumentHighlights(currentDoc.id, newContent);
       }
       
       // 3. Trigger translation popup for the joint phrase
@@ -3925,10 +4224,18 @@ function App() {
         onMouseOut={(e) => { if(!isSelected) e.currentTarget.style.backgroundColor = 'transparent'; }}
       >
         <BookIcon />
-        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flex: 1, minWidth: 0 }}>
-          <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flex: 1, minWidth: 0, opacity: readDocs[doc.id] ? 0.6 : 1 }}>
+          <span style={{ 
+            overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1,
+            textDecoration: readDocs[doc.id] ? 'line-through' : 'none'
+          }}>
             {cleanDocTitle}
           </span>
+          {readDocs[doc.id] && (
+            <span style={{ fontSize: '0.65rem', background: 'rgba(48, 209, 88, 0.15)', color: '#30D158', padding: '1px 5px', borderRadius: '4px', fontWeight: '600', whiteSpace: 'nowrap' }}>
+              Read
+            </span>
+          )}
           {!isInsideFolder && docFolders[doc.id] && (
             <span style={{ fontSize: '0.68rem', background: 'rgba(255,255,255,0.08)', padding: '2px 6px', borderRadius: '4px', color: theme.textSecondary, whiteSpace: 'nowrap' }}>
               📁 {docFolders[doc.id]}
@@ -3936,6 +4243,27 @@ function App() {
           )}
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: '2px' }} onClick={e => e.stopPropagation()}>
+          <button 
+            onClick={(e) => {
+              e.stopPropagation();
+              toggleReadDoc(doc.id);
+            }}
+            className="icon-btn"
+            title={readDocs[doc.id] ? "Mark as unread" : "Mark as finished / read"}
+            style={{ 
+              padding: '4px', 
+              opacity: readDocs[doc.id] ? 1 : 0.45, 
+              color: readDocs[doc.id] ? '#30D158' : theme.textSecondary 
+            }}
+            onMouseOver={e => e.currentTarget.style.opacity = 1}
+            onMouseOut={e => e.currentTarget.style.opacity = readDocs[doc.id] ? 1 : 0.45}
+          >
+            {readDocs[doc.id] ? (
+              <span style={{ fontSize: '0.85rem' }}>✓</span>
+            ) : (
+              <span style={{ fontSize: '0.8rem', opacity: 0.6 }}>○</span>
+            )}
+          </button>
           <button 
             onClick={(e) => {
               e.stopPropagation();
@@ -4272,6 +4600,78 @@ function App() {
                  <span>{!isOnline ? '📴' : isManualOffline ? '📴' : '📶'}</span>
                  <span>{!isOnline ? 'Offline' : isManualOffline ? 'Offline' : 'Online'}</span>
              </button>
+             {pendingSyncCount > 0 && (
+                 <div 
+                     style={{ position: 'relative', display: 'inline-block' }}
+                     onMouseEnter={() => setShowPendingTooltip(true)}
+                     onMouseLeave={() => setShowPendingTooltip(false)}
+                 >
+                     <button
+                         onClick={() => {
+                           if (!isOnline || isManualOffline) {
+                             showToast("Conéctate a internet para sincronizar la cola offline.");
+                           } else {
+                             processPendingQueue();
+                           }
+                         }}
+                         disabled={isSyncingOfflineQueue}
+                         style={{
+                             display: 'flex',
+                             alignItems: 'center',
+                             gap: '6px',
+                             fontSize: '0.8rem',
+                             fontWeight: '600',
+                             padding: '6px 12px',
+                             borderRadius: '20px',
+                             border: '1px solid rgba(10, 132, 255, 0.3)',
+                             cursor: isSyncingOfflineQueue ? 'default' : 'pointer',
+                             backgroundColor: 'rgba(10, 132, 255, 0.15)',
+                             color: '#0A84FF',
+                             animation: isSyncingOfflineQueue ? 'pulse 1.5s infinite' : 'none',
+                             transition: 'all 0.2s'
+                         }}
+                         title={isSyncingOfflineQueue ? "Sincronizando palabras pendientes..." : `Hay ${pendingSyncCount} elemento(s) pendiente(s) de sincronizar`}
+                     >
+                         <span>{isSyncingOfflineQueue ? '⏳' : '🔄'}</span>
+                         <span>{isSyncingOfflineQueue ? 'Sincronizando...' : `${pendingSyncCount} pendientes`}</span>
+                     </button>
+
+                     {showPendingTooltip && pendingSyncWords.length > 0 && (
+                         <div style={{
+                             position: 'absolute',
+                             top: '110%',
+                             right: 0,
+                             zIndex: 1000,
+                             background: '#1C1C1E',
+                             border: '1px solid rgba(255, 255, 255, 0.12)',
+                             borderRadius: '12px',
+                             padding: '10px 14px',
+                             minWidth: '180px',
+                             maxWidth: '260px',
+                             boxShadow: '0 8px 24px rgba(0,0,0,0.5)',
+                             pointerEvents: 'none'
+                         }}>
+                             <div style={{ fontSize: '0.75rem', fontWeight: '700', color: '#8E8E93', textTransform: 'uppercase', marginBottom: '6px', letterSpacing: '0.5px' }}>
+                                 Palabras pendientes ({pendingSyncWords.length}):
+                             </div>
+                             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', maxHeight: '160px', overflowY: 'auto' }}>
+                                 {pendingSyncWords.map((w, idx) => (
+                                     <span key={idx} style={{
+                                         fontSize: '0.8rem',
+                                         background: 'rgba(10, 132, 255, 0.2)',
+                                         color: '#5AC8FA',
+                                         padding: '2px 8px',
+                                         borderRadius: '8px',
+                                         fontWeight: '500'
+                                     }}>
+                                         {w}
+                                     </span>
+                                 ))}
+                             </div>
+                         </div>
+                     )}
+                 </div>
+             )}
              {currentDoc && currentDoc.id !== 'demo' && (
                  <button 
                      onClick={() => setShowBookmarkModal(true)} 
@@ -4590,10 +4990,13 @@ function App() {
       {/* REPRODUCTOR FLOTANTE DESACOPLADO */}
       {activeAudio && (
         <div style={{
-            position: 'fixed', bottom: '30px', left: '20px', right: '20px', maxWidth: '480px', margin: '0 auto',
+            position: 'fixed', 
+            bottom: selectedWord ? `${Math.max(wordModalHeight, 220) + 20}px` : '30px', 
+            left: '20px', right: '20px', maxWidth: '480px', margin: '0 auto',
             backgroundColor: 'rgba(28, 28, 30, 0.8)', backdropFilter: 'blur(25px)', WebkitBackdropFilter: 'blur(25px)',
-            borderRadius: '20px', padding: '20px 24px', zIndex: 1000, color: 'white',
-            boxShadow: '0 20px 50px rgba(0,0,0,0.5), 0 0 0 1px rgba(255,255,255,0.08)'
+            borderRadius: '20px', padding: '20px 24px', zIndex: 3300, color: 'white',
+            boxShadow: '0 20px 50px rgba(0,0,0,0.5), 0 0 0 1px rgba(255,255,255,0.08)',
+            transition: 'bottom 0.3s cubic-bezier(0.2, 0.8, 0.2, 1)'
         }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
                 <div style={{ textAlign: 'left', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', marginRight: '15px', flex: 1 }}>
@@ -5307,33 +5710,63 @@ function App() {
                 ))}
               </div>
 
-              {/* Buscador */}
-              <div style={{
-                display: 'flex', alignItems: 'center', gap: '8px',
-                background: 'rgba(255,255,255,0.05)', borderRadius: '10px',
-                padding: '6px 12px', flex: '1 1 200px', maxWidth: '300px',
-                border: '1px solid rgba(255,255,255,0.06)'
-              }}>
-                <SearchSmallIcon />
-                <input
-                  type="text"
-                  placeholder="Filter words..."
-                  value={vocabSearchQuery}
-                  onChange={(e) => setVocabSearchQuery(e.target.value)}
-                  style={{
-                    background: 'transparent', border: 'none', outline: 'none',
-                    color: '#fff', fontSize: '0.82rem', width: '100%'
-                  }}
-                />
-                {vocabSearchQuery && (
-                  <button 
-                    onClick={() => setVocabSearchQuery('')} 
-                    style={{ background: 'none', border: 'none', color: theme.textSecondary, cursor: 'pointer', padding: 0 }}
-                  >
-                    ×
-                  </button>
-                )}
-              </div>
+              {/* Filtro por Libro / Documento de Origen */}
+              {(() => {
+                const availableBooks = Array.from(new Set(
+                  cloudBooks.map(b => b.title.startsWith("Subrayados: ") ? b.title.replace("Subrayados: ", "") : b.title)
+                )).filter(Boolean);
+
+                return (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                    {availableBooks.length > 0 && (
+                      <select
+                        value={vocabSourceDocFilter}
+                        onChange={(e) => setVocabSourceDocFilter(e.target.value)}
+                        style={{
+                          background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.08)',
+                          color: '#fff', borderRadius: '10px', padding: '6px 12px', fontSize: '0.8rem',
+                          outline: 'none', cursor: 'pointer', maxWidth: '220px'
+                        }}
+                      >
+                        <option value="all" style={{ background: '#1c1c1e', color: '#fff' }}>All Books / Texts</option>
+                        {availableBooks.map((bTitle, idx) => (
+                          <option key={idx} value={bTitle} style={{ background: '#1c1c1e', color: '#fff' }}>
+                            📖 {bTitle}
+                          </option>
+                        ))}
+                      </select>
+                    )}
+
+                    {/* Buscador */}
+                    <div style={{
+                      display: 'flex', alignItems: 'center', gap: '8px',
+                      background: 'rgba(255,255,255,0.05)', borderRadius: '10px',
+                      padding: '6px 12px', flex: '1 1 180px', maxWidth: '260px',
+                      border: '1px solid rgba(255,255,255,0.06)'
+                    }}>
+                      <SearchSmallIcon />
+                      <input
+                        type="text"
+                        placeholder="Filter words..."
+                        value={vocabSearchQuery}
+                        onChange={(e) => setVocabSearchQuery(e.target.value)}
+                        style={{
+                          background: 'transparent', border: 'none', outline: 'none',
+                          color: '#fff', fontSize: '0.82rem', width: '100%'
+                        }}
+                      />
+                      {vocabSearchQuery && (
+                        <button 
+                          onClick={() => setVocabSearchQuery('')} 
+                          style={{ background: 'none', border: 'none', color: theme.textSecondary, cursor: 'pointer', padding: 0 }}
+                        >
+                          ×
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                );
+              })()}
             </div>
 
             {/* Contenido / Tabla de Palabras */}
@@ -5445,6 +5878,15 @@ function App() {
                   items = items.filter(i => {
                     const l = (i.language || '').toLowerCase();
                     return l === vocabLanguageFilter || l.startsWith(vocabLanguageFilter);
+                  });
+                }
+
+                // Filtrar por libro / documento de origen
+                if (vocabSourceDocFilter !== 'all') {
+                  items = items.filter(i => {
+                    if (!i.sourceDoc) return false;
+                    const cleanSource = i.sourceDoc.startsWith("Subrayados: ") ? i.sourceDoc.replace("Subrayados: ", "") : i.sourceDoc;
+                    return cleanSource.toLowerCase() === vocabSourceDocFilter.toLowerCase();
                   });
                 }
 
@@ -5606,7 +6048,9 @@ function App() {
                 handleCloseModal();
               }
             }} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', zIndex: 3100 }} />
-            <div style={{ 
+            <div 
+                ref={wordModalRef}
+                style={{ 
                 position: 'fixed', bottom: 0, left: 0, right: 0, 
                 backgroundColor: theme.modalBg, backdropFilter: 'blur(30px)', WebkitBackdropFilter: 'blur(30px)',
                 borderRadius: '24px 24px 0 0', padding: '30px 24px 50px 24px', zIndex: 3200, 
@@ -5627,12 +6071,25 @@ function App() {
                         {isLoading ? (
                             <span style={{ color: theme.accent, fontSize:'0.9rem' }}>Analyzing...</span>
                         ) : (
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                <span style={{ color: theme.textSecondary, fontSize:'0.9rem' }}>{(isDetailedMode && selectedWord.grammar) || "Vocabulary"}</span>
-                                {isDetailedMode && selectedWord.grammar && <span style={{ color: 'rgba(255,255,255,0.15)', fontSize: '0.9rem' }}>•</span>}
-                                <span style={{ color: isDetailedMode ? '#30D158' : theme.textSecondary, fontSize: '0.8rem', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                                    {isDetailedMode ? "Detailed" : "Simple"}
-                                </span>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', textAlign: 'left', marginTop: '4px' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                                    {isDetailedMode && selectedWord.grammar && (
+                                        <>
+                                            <span style={{ color: theme.textSecondary, fontSize:'0.9rem', fontWeight: '500' }}>
+                                                {formatGrammar(selectedWord.grammar)}
+                                            </span>
+                                            <span style={{ color: 'rgba(255,255,255,0.15)', fontSize: '0.9rem' }}>•</span>
+                                        </>
+                                    )}
+                                    <span style={{ color: isDetailedMode ? '#30D158' : theme.textSecondary, fontSize: '0.8rem', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                                        {isDetailedMode ? "Detailed" : "Simple"}
+                                    </span>
+                                </div>
+                                {isDetailedMode && selectedWord.definition && (
+                                    <p style={{ margin: 0, fontSize: '0.95rem', color: '#E5E5E7', lineHeight: '1.45', fontStyle: 'normal' }}>
+                                        {selectedWord.definition}
+                                    </p>
+                                )}
                             </div>
                         )}
                     </div>
@@ -5793,10 +6250,10 @@ function App() {
                         </div>
                     )}
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '25px' }}>
-                        <div className="card-info"><div className="label">SPANISH</div><div className="val">{selectedWord.es}</div></div>
-                        <div className="card-info"><div className="label">ENGLISH</div><div className="val">{selectedWord.en}</div></div>
+                        <div className="card-info"><div className="label">SPANISH</div><div className="val">{typeof selectedWord.es === 'string' ? selectedWord.es : (selectedWord.es ? JSON.stringify(selectedWord.es) : '—')}</div></div>
+                        <div className="card-info"><div className="label">ENGLISH</div><div className="val">{typeof selectedWord.en === 'string' ? selectedWord.en : (selectedWord.en ? JSON.stringify(selectedWord.en) : '—')}</div></div>
                     </div>
-                    {isDetailedMode && selectedWord.alternatives && selectedWord.alternatives.length > 0 && (
+                    {isDetailedMode && Array.isArray(selectedWord.alternatives) && selectedWord.alternatives.length > 0 && (
                         <div style={{ 
                             background: 'rgba(255,255,255,0.04)', 
                             padding: '16px 20px', 
@@ -5808,20 +6265,25 @@ function App() {
                                 Alternative Meanings / Synonyms
                             </div>
                             <div style={{ fontSize: '1.05rem', fontWeight: '600', color: '#fff', textAlign: 'left' }}>
-                                {selectedWord.alternatives.join(', ')}
+                                {selectedWord.alternatives.map(a => typeof a === 'string' ? a : JSON.stringify(a)).join(', ')}
                             </div>
                         </div>
                     )}
-                    {isDetailedMode && selectedWord.examples && selectedWord.examples.length > 0 && (
+                    {isDetailedMode && Array.isArray(selectedWord.examples) && selectedWord.examples.length > 0 && (
                         <div style={{ paddingLeft: '8px', textAlign: 'left' }}>
                             <h3 style={{ fontSize: '0.8rem', color: theme.textSecondary, textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '12px' }}>Context & Examples</h3>
                             <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
-                                {(selectedWord.examples || []).map((ex, i) => (
-                                    <li key={i} style={{ paddingLeft: '16px', borderLeft: `3px solid ${theme.accent}`, marginBottom: '16px' }}>
-                                        <p style={{ margin: '0 0 6px 0', fontSize: '1.1rem', fontFamily: '"New York", serif', color: '#E5E5E7', fontStyle: 'italic' }}>"{typeof ex === 'string' ? ex : ex.original}"</p>
-                                        {(typeof ex === 'object' && ex.es_translation) && <p style={{ margin: 0, fontSize: '0.9rem', color: '#86868b' }}>{ex.es_translation}</p>}
-                                    </li>
-                                ))}
+                                {selectedWord.examples.map((ex, i) => {
+                                    const orig = typeof ex === 'string' ? ex : (ex?.original || ex?.text || '');
+                                    const trans = (ex && typeof ex === 'object') ? (ex.es_translation || ex.translation || '') : '';
+                                    if (!orig) return null;
+                                    return (
+                                        <li key={i} style={{ paddingLeft: '16px', borderLeft: `3px solid ${theme.accent}`, marginBottom: '16px' }}>
+                                            <p style={{ margin: '0 0 6px 0', fontSize: '1.1rem', fontFamily: '"New York", serif', color: '#E5E5E7', fontStyle: 'italic' }}>"{orig}"</p>
+                                            {trans && <p style={{ margin: 0, fontSize: '0.9rem', color: '#86868b' }}>{trans}</p>}
+                                        </li>
+                                    );
+                                })}
                             </ul>
                         </div>
                     )}
@@ -5854,4 +6316,69 @@ function App() {
   );
 }
 
-export default App;
+class AppErrorBoundary extends React.Component {
+  constructor(props) {
+    super(props);
+    this.state = { hasError: false, error: null };
+  }
+
+  static getDerivedStateFromError(error) {
+    return { hasError: true, error };
+  }
+
+  componentDidCatch(error, errorInfo) {
+    console.error("AppErrorBoundary caught error:", error, errorInfo);
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div style={{
+          minHeight: '100vh',
+          backgroundColor: '#000',
+          color: '#fff',
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center',
+          padding: '24px',
+          textAlign: 'center',
+          fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
+        }}>
+          <div style={{ fontSize: '3rem', marginBottom: '16px' }}>⚠️</div>
+          <h2 style={{ fontSize: '1.5rem', marginBottom: '8px' }}>Something unexpected occurred</h2>
+          <p style={{ color: '#86868b', maxWidth: '420px', marginBottom: '24px', fontSize: '0.95rem', lineHeight: '1.4' }}>
+            The application intercepted a rendering error and kept your session safe.
+          </p>
+          <button 
+            onClick={() => {
+              this.setState({ hasError: false, error: null });
+              window.location.reload();
+            }}
+            style={{
+              backgroundColor: '#0A84FF',
+              color: '#fff',
+              border: 'none',
+              borderRadius: '12px',
+              padding: '12px 24px',
+              fontSize: '1rem',
+              fontWeight: '600',
+              cursor: 'pointer'
+            }}
+          >
+            Reload Reader
+          </button>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
+
+export default function SafeApp() {
+  return (
+    <AppErrorBoundary>
+      <App />
+    </AppErrorBoundary>
+  );
+}

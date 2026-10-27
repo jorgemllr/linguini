@@ -37,7 +37,16 @@ export default defineConfig({
     proxy: {
       '/api': {
         target: 'http://127.0.0.1:5000',
-        changeOrigin: true
+        changeOrigin: true,
+        configure: (proxy, _options) => {
+          proxy.on('error', (err, _req, res) => {
+            // Silently return 502/503 so client-side fallback triggers cleanly without crashing Vite console
+            if (res && !res.headersSent && typeof res.writeHead === 'function') {
+              res.writeHead(502, { 'Content-Type': 'application/json' });
+              res.end(JSON.stringify({ error: 'Local backend server not running', code: err.code }));
+            }
+          });
+        }
       }
     }
   }

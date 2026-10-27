@@ -623,16 +623,17 @@ def analyze_word():
         """
     else:
         prompt = f"""
-        Actúa como un profesor de {lang_name} experto. El usuario no entiende "{word}".
+        Actúa como un profesor de {lang_name} experto. El usuario desea entender "{word}".
         Contexto: "...{context_sentence}..."
         Analiza "{word}" EN ESE CONTEXTO y devuelve un objeto JSON estructurado con las siguientes claves:
         1. "es": Traducción principal al español adaptada al contexto actual.
         2. "en": Traducción principal al inglés adaptada al contexto actual.
-        3. "grammar": Explicación gramatical muy breve y concisa.
-        4. "alternatives": Un array de strings con otras traducciones o acepciones importantes de la palabra en otros contextos. Si la palabra es muy simple y no tiene otras acepciones significativas (como "puerta" o "mesa"), este array puede estar vacío o contener máximo una alternativa directa.
-        5. "examples": Array con 2 objetos de ejemplo {{"original": "...", "es_translation": "..."}}:
+        3. "grammar": Explicación gramatical detallada en español (categoría gramatical, género/número o tiempo/conjugación verbal, raíz/lema y función en esta oración).
+        4. "definition": Definición clara estilo diccionario en español explicando el significado exacto de la palabra en este contexto.
+        5. "alternatives": Un array de strings con otras traducciones o acepciones importantes de la palabra en otros contextos (máximo 2-3).
+        6. "examples": Array con 2 objetos de ejemplo {{"original": "...", "es_translation": "..."}}:
            - El primer ejemplo debe usar la palabra con el mismo significado y en un contexto similar al actual.
-           - El segundo ejemplo: Si la palabra tiene otras acepciones importantes que cambian drásticamente su significado según el contexto, este segundo ejemplo DEBE ilustrar ese uso alternativo y contrastante. Si la palabra es simple o su significado casi no cambia, el segundo ejemplo simplemente debe ilustrar otro uso común del significado principal.
+           - El segundo ejemplo debe ilustrar otro uso común o alternativo de la palabra.
         """
 
     # 1. Intentar usar OpenAI como cliente principal (gpt-4o-mini via API directa)
